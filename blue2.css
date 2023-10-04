@@ -14,6 +14,10 @@ main:nth-of-type(1) {
     height: 65px;
 }
 
+h2:nth-of-type(1) {
+    background: lightgray;
+    height: 65px;
+}
 h1 {
     text-align: center;
     color: #000;
@@ -21,7 +25,31 @@ h1 {
     margin: 0;
 }
 
-article:nth-of-type(4) {
+a:nth-of-type(1) {
+    text-align: center;
+    color: #000;
+    line-height: 30px;
+    margin: 0;
+  
+}
+
+
+
+article:nth-of-type(1) {
+    flex: 3 200px;
+    display: flex;
+    flex-flow: column;
+    padding: 0px;
+    margin: 1px;
+    background: grey;
+}
+a:nth-of-type(2) {
+    text-align: center;
+    color: #000;
+    line-height: 30px;
+    margin: 0;
+}
+article:nth-of-type(2) {
     text-align: center;
     color: #000;
     line-height: 25px;
