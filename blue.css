@@ -4,13 +4,14 @@
 	display: flex;
 	flex-wrap: wrap;
 }
-
-a {
-    background-color: aqua;
+article:nth-of-type:(1) {
+    background-color: orange;
     border-radius: 0.25rem;
     margin: 0.5rem;
-    /* flex: 1; */
+     flex: 1; 
 }
+
+
 			
   border-width: 10px;
   border-style: solid;
@@ -25,3 +26,10 @@ body {
   border-color: darkblue;
 		}
 body{ color:white}
+
+H2 {
+		background-color: royalblue;
+  border-width: 10px;
+  border-style: solid;
+  border-color: darkblue;
+		}
