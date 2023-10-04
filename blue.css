@@ -1,35 +1,53 @@
-		h1 {
-		background-color: royalblue;
-.wrapper {
-	display: flex;
-	flex-wrap: wrap;
-}
-article:nth-of-type:(1) {
-    background-color: orange;
-    border-radius: 0.25rem;
-    margin: 0.5rem;
-     flex: 1; 
+/* Basic Styling */
+
+html {
+    font-family: times;
 }
 
-
-			
-  border-width: 10px;
-  border-style: solid;
-  border-color: darkblue;
-		}
-h1 {          color: lightcyan
-}
 body {
-		background-color: black;
-  border-width: 10px;
-  border-style: solid;
-  border-color: darkblue;
-		}
-body{ color:white}
+    margin: 0;
+}
 
-H2 {
-		background-color: royalblue;
-  border-width: 10px;
-  border-style: solid;
-  border-color: darkblue;
-		}
+main {
+    background: orchid;
+    height: 65px;
+}
+
+h1 {
+    text-align: center;
+    color: #000;
+    line-height: 30px;
+    margin: 0;
+}
+
+article {
+    padding: 0px;
+    margin: 1px;
+    background: aqua;
+}
+
+/* Flex Containers */
+
+button {
+    flex: 1 auto;
+    margin: 5px;
+    font-size: 18px;
+    line-height: 1.5;
+}
+
+
+
+article {
+    flex: 1 200px;
+}
+
+article:nth-of-type(2) {
+    flex: 3 200px;
+    display: flex;
+    flex-flow: column;
+}
+
+main {
+    display: flex;
+}
+
