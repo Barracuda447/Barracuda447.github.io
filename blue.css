@@ -1,6 +1,9 @@
 		h1 {
 		background-color: royalblue;
-          
+.wrapper {
+	display: flex;
+	flex-wrap: wrap;
+}
 
   border-width: 10px;
   border-style: solid;
