@@ -10,13 +10,16 @@ body {
 }
 
 main:nth-of-type(1) {
-    background: lightgray;
+    background: gray;
     height: 65px;
+    padding: 1px;
 }
 
 h2:nth-of-type(1) {
     background: lightgray;
     height: 65px;
+    margin: 0;
+    width: 250px;
 }
 h1 {
     text-align: center;
@@ -36,12 +39,12 @@ a:nth-of-type(1) {
 
 
 article:nth-of-type(1) {
-    flex: 3 200px;
+    flex: 3;
     display: flex;
     flex-flow: column;
     padding: 0px;
     margin: 1px;
-    background: grey;
+
 }
 a:nth-of-type(2) {
     text-align: center;
@@ -59,30 +62,30 @@ article:nth-of-type(2) {
 
 /* Flex Containers */
 
-button {
-    flex: 1 auto;
-    margin: 5px;
-    font-size: 18px;
-    line-height: 1.5;
-}
 
 
-
-article {
-    flex: 1 200px;
-}
-
-article:nth-of-type(2) {
-    flex: 3 200px;
+article:nth-of-type(1) {
+    flex: 2;
     display: flex;
     flex-flow: column;
     padding: 0px;
     margin: 1px;
-    background: grey;
+
+
+}
+
+
+article:nth-of-type(2) {
+    flex: 2;
+    display: flex;
+    flex-flow: column;
+    padding: 0px;
+    margin: 1px;
+
 
 }
 article:nth-of-type(3) {
-    flex: 3 200px;
+    flex: 1;
     display: flex;
     flex-flow: column;
     padding: 0px;
@@ -96,27 +99,13 @@ main {
     display: flex;
 }
 
+footer{
+  background: grey;
+  border: 400px;
+  line-height: 40px;
+  text-align: center;
+  
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+  
+}
