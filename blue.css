@@ -41,11 +41,11 @@ button {
 
 
 article {
-    flex: 1 200px;
+    flex: 3;
 }
 
 article:nth-of-type(2) {
-    flex: 3 200px;
+    flex: 3;
     display: flex;
     flex-flow: column;
     padding: 0px;
@@ -54,17 +54,32 @@ article:nth-of-type(2) {
 
 }
 article:nth-of-type(3) {
-    flex: 3 200px;
+    flex: 2;
     display: flex;
     flex-flow: column;
     padding: 0px;
     margin: 1px;
     background: grey;
 
-
-  
 }
 main {
     display: flex;
 }
+
+footer{
+  background: grey;
+  border: 400px;
+  line-height: 40px;
+  text-align: center;
+  
+
+
+  
+}
+
+
+
+
+
+
 
