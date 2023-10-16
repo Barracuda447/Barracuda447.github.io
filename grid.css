@@ -10,7 +10,8 @@ body {
     "header header"
     "sidebar content"
     "footer footer";
-  gap: 20px;
+    grid-template-columns: 200px 200px 200px;
+    gap: 20px;
 }
 header {
   grid-area: header;
