@@ -28,4 +28,38 @@ aside {
 footer {
   grid-area: footer;
 }
-
+#g{
+    grid-column-start
+    grid-column-end
+    grid-row-start
+    grid-row-end
+    border-color: green;
+}
+#g2{
+    grid-column-start
+    grid-column-end
+    grid-row-start
+    grid-row-end
+    border-color: red;
+}
+#g3{
+    grid-column-start
+    grid-column-end
+    grid-row-start
+    grid-row-end
+    border-color: blue;
+}
+#g4{
+    grid-column-start
+    grid-column-end
+    grid-row-start
+    grid-row-end
+    border-color: orange;
+}
+#g5{
+    grid-column-start
+    grid-column-end
+    grid-row-start
+    grid-row-end
+    border-color: purple;
+}
