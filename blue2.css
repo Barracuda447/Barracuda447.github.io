@@ -1,111 +1,85 @@
-/* Basic Styling */
-
-html {
-    font-family: times;
-}
-
+/* Global styles */
 body {
-    background: lightcyan;
+    background-color: tan;
+    margin: 0;
+    margin-top: 12vw; /* Adjusted margin-top using vw */
+    min-height: 1500px;
+}
+
+header h1,
+footer {
     margin: 0;
 }
 
-main:nth-of-type(1) {
-    background: gray;
-    height: 65px;
-    padding: 1px;
+h2 {
+    margin-top: 100px;
+    background-color: beige;
+    padding-left: 20px;
 }
 
-h2:nth-of-type(1) {
-    background: lightgray;
-    height: 65px;
-    margin: 0;
-    width: 250px;
+.navbar {
+    background-color: grey;
+    overflow: hidden;
+    position: fixed; /* Change to fixed */
+    top: 0; /* Position at the top of the screen */
+    width: 100%;
+    z-index: 1000;
+    height: 80px;
 }
-h1 {
+
+.navbar h1 {
+    float: left;
+    display: block;
+    color: white;
     text-align: center;
-    color: #000;
-    line-height: 30px;
-    margin: 0;
+    padding: 1vw 2vw; /* Adjusted padding using vw */
+    text-decoration: none;
+    font-weight: lighter; /* Lighter font weight */
+    margin-left: 1vw; /* Adjusted margin-left using vw */
+    font-family: 'Brush Script MT', cursive; /* Added font-family */
 }
 
-a:nth-of-type(1) {
+.navbar a {
+    float: left;
+    display: block;
+    color: #fff;
     text-align: center;
-    color: #000;
-    line-height: 30px;
-    margin: 0;
-  
+    padding: 1.5vw 2vw; /* Adjusted padding using vw */
+    text-decoration: none;
+    font-size: 1.6vw; /* Adjusted font size using vw */
 }
 
-
-
-article:nth-of-type(1) {
-    flex: 3;
-    display: flex;
-    flex-flow: column;
-    padding: 0px;
-    margin: 1px;
-
+.navbar a:hover {
+    background-color: #ddd;
+    color: #333;
 }
-a:nth-of-type(2) {
+
+#content {
+    padding-top: 0px; /* Adjusted padding-top using vw */
+}
+
+.contact-info {
+    padding-left: 20px; /* Left padding of contact info */
+}
+
+footer {
+    background-color: #333;
+    color: #fff;
+    padding: 1vw 2vw; /* Adjusted padding using vw */
     text-align: center;
-    color: #000;
-    line-height: 30px;
-    margin: 0;
-}
-article:nth-of-type(2) {
-    text-align: center;
-    color: #000;
-    line-height: 25px;
-    margin: 0;
+    width: 100%;
+    font-family: Arial, sans-serif; /* Added font-family */
+    position: relative; /* Remove fixed positioning */
+    clear: both; /* Clear any floats */
+    margin-top: 365px;
 }
 
-
-/* Flex Containers */
-
-
-
-article:nth-of-type(1) {
-    flex: 2;
-    display: flex;
-    flex-flow: column;
-    padding: 0px;
-    margin: 1px;
-
-
-}
-
-
-article:nth-of-type(2) {
-    flex: 2;
-    display: flex;
-    flex-flow: column;
-    padding: 0px;
-    margin: 1px;
-
-
-}
-article:nth-of-type(3) {
-    flex: 1;
-    display: flex;
-    flex-flow: column;
-    padding: 0px;
-    margin: 1px;
-    background: grey;
-
-
-  
-}
-main {
-    display: flex;
-}
-
-footer{
-  background: grey;
-  border: 400px;
-  line-height: 40px;
-  text-align: center;
-  
-
-
-  
+/* Adjustments for smaller screens */
+@media screen and (max-width: 768px) {
+    .navbar a {
+        font-size: 3.2vw; /* Adjusted font size using vw */
+    }
+    .navbar {
+        position: absolute;
+    }
 }
