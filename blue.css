@@ -1,85 +1,171 @@
-/* Basic Styling */
-
-html {
-    font-family: times;
-}
-
+/* Global styles */
 body {
-    background: lightcyan;
+    background-color: tan;
+    margin: 0;
+    margin-top: 12vw; /* Adjusted margin-top using vw */
+    min-height: 1500px;
+}
+
+#sleeping, #jumping, #biting, #birthday {
+    max-width: 300px;
+    height: auto;
+    margin-right: 30px;
+}
+
+header h1,
+footer {
     margin: 0;
 }
 
-main:nth-of-type(1) {
-    background: lightgray;
-    height: 65px;
+h2 {
+    margin-top: 100px;
+    background-color: beige;
 }
 
-h1 {
+.navbar {
+    background-color: grey;
+    overflow: hidden;
+    position: fixed;
+    margin-top: -12vw; /* Adjusted margin-top using vw */
+    z-index: 1000;
+    width: 100%; /* Ensure navbar takes up full width */
+}
+
+.navbar h1 {
+    float: left;
+    display: block;
+    color: white;
     text-align: center;
-    color: #000;
-    line-height: 30px;
-    margin: 0;
+    padding: 1vw 2vw; /* Adjusted padding using vw */
+    text-decoration: none;
+    font-weight: lighter; /* Lighter font weight */
+    margin-left: 1vw; /* Adjusted margin-left using vw */
+    font-family: 'Brush Script MT', cursive; /* Added font-family */
 }
 
-article:nth-of-type(4) {
+.navbar a {
+    float: left;
+    display: block;
+    color: #fff;
     text-align: center;
-    color: #000;
-    line-height: 25px;
-    margin: 0;
+    padding: 1.5vw 2vw; /* Adjusted padding using vw */
+    text-decoration: none;
+    font-size: 1.6vw; /* Adjusted font size using vw */
 }
 
-
-/* Flex Containers */
-
-button {
-    flex: 1 auto;
-    margin: 5px;
-    font-size: 18px;
-    line-height: 1.5;
+.navbar a:hover {
+    background-color: #ddd;
+    color: #333;
 }
 
-
-
-article {
-    flex: 3;
+#content {
+    padding-top: 5vw; /* Adjusted padding-top using vw */
 }
 
-article:nth-of-type(2) {
-    flex: 3;
+/* CSS for text and image positioning */
+.content-wrapper {
     display: flex;
-    flex-flow: column;
-    padding: 0px;
-    margin: 1px;
-    background: grey;
-
-}
-article:nth-of-type(3) {
-    flex: 2;
-    display: flex;
-    flex-flow: column;
-    padding: 0px;
-    margin: 1px;
-    background: grey;
-
-}
-main {
-    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
 }
 
-footer{
-  background: grey;
-  border: 400px;
-  line-height: 40px;
-  text-align: center;
-  
-
-
-  
+.text {
+    flex-grow: 1;
+    margin-right: 2vw; /* Adjusted spacing between text and image using vw */
+    margin-left: 20px;
 }
 
+.image {
+    flex-shrink: 0; /* Prevent image from shrinking */
+    margin-left: 2vw; /* Adjusted spacing between text and image using vw */
+    max-height: 100px; /* Set the maximum height of images to 100px */
+    width: auto; /* Ensure image maintains aspect ratio */
+}
+
+/* Adjustments for smaller screens */
+
+
+/* Footer styles */
+/* Footer styles */
+footer {
+    background-color: #333;
+    color: #fff;
+    padding: 1vw 2vw; /* Adjusted padding using vw */
+    text-align: center;
+    width: 100%;
+    font-family: Arial, sans-serif; /* Added font-family */
+    position: relative; /* Remove fixed positioning */
+    clear: both; /* Clear any floats */
+    margin-top: 150px;
+}
+
+/* Adjustments for smaller screens */
 
 
 
+footer p,
+footer a {
+    color: #fff; /* Set text color */
+    margin: 0; /* Reset margin */
+    padding: 0; /* Reset padding */
+    font-size: 14px; /* Set font size */
+}
 
+/* Increased main text size and spacing */
+#content p {
+    font-size: 20px; /* Increase font size */
+    line-height: 1.6; /* Increase line height for better spacing */
+    margin-bottom: 20px; /* Increase bottom margin */
+    background-color: lightgrey;
+    padding-left: 20px;
+}
 
+/* Adjusted top margin for the first paragraph */
+/* Adjusted top margin for the specific paragraph */
+#content section:first-of-type .text {
+    margin-top: -140px; /* Decreased top margin for the first paragraph */
+}
 
+/* Move the first image up by 60px */
+#sleeping {
+    margin-top: -20px;
+}
+#jumping{
+    margin-top: 120px;
+}
+#biting {
+    margin-top: 150px;
+}
+#birthday {
+    margin-top: 120px;
+    width: 150px;
+}
+@media screen and (max-width: 768px) {
+    .content-wrapper {
+        flex-direction: column; /* Stack items vertically on smaller screens */
+    }
+
+    .image {
+        margin-top: 5vw; /* Add spacing between text and image on smaller screens */
+        margin-left: 20px; /* Reset margin for smaller screens */
+    }
+    footer {
+        position: static; /* Reset positioning for smaller screens */
+    }
+    #sleeping {
+        margin-top: -20px;
+    }
+    #jumping{
+        margin-top: -40px;
+    }
+    #biting {
+        margin-top: -40px;
+    }
+    #birthday {
+        margin-top: -40px;
+        width: 170px;
+    }
+    .navbar a {
+        font-size: 3.2vw; /* Adjusted font size using vw */
+    }
+}
