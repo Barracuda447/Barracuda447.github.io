@@ -144,6 +144,9 @@ footer a {
     .content-wrapper {
         flex-direction: column; /* Stack items vertically on smaller screens */
     }
+    #content section:first-of-type .text {
+    margin-top: -40px; /* Decreased top margin for the first paragraph */
+}
 
     .image {
         margin-top: 5vw; /* Add spacing between text and image on smaller screens */
