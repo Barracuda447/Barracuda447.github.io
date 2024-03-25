@@ -59,7 +59,7 @@ h2 {
 }
 
 #content {
-    padding-top: 10vw; /* Adjusted padding-top using vw */
+    margin-top: 50px; /* Adjusted padding-top using vw */
 }
 
 /* CSS for text and image positioning */
