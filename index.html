@@ -405,7 +405,28 @@
             <!-- Baseline Inventory Tab -->
             <div id="baseline" class="tab-content active">
                 <div class="card">
-                    <h2 style="margin-bottom: 20px;">Add Baseline Item</h2>
+                    <h2 style="margin-bottom: 20px;">Import Baseline from Excel</h2>
+                    <p style="margin-bottom: 20px; opacity: 0.8;">
+                        Upload an Excel file (.xlsx or .xls) with columns: SKU, LOT, Expiry Date, Bin Location, Bin Quantity
+                    </p>
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label for="excel-file">Select Excel File:</label>
+                        <input type="file" id="excel-file" accept=".xlsx,.xls" style="margin-top: 8px;">
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button class="btn btn-primary" onclick="importFromExcel()">Import from Excel</button>
+                        <div id="import-progress" style="display: none;">
+                            <span id="progress-text">Processing...</span>
+                            <div style="width: 200px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; margin-left: 10px;">
+                                <div id="progress-bar" style="width: 0%; height: 100%; background: #4CAF50; border-radius: 4px; transition: width 0.3s ease;"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="import-results" style="margin-top: 15px;"></div>
+                </div>
+
+                <div class="card">
+                    <h2 style="margin-bottom: 20px;">Add Baseline Item Manually</h2>
                     <form id="baseline-form">
                         <div class="form-grid">
                             <div class="form-group">
@@ -555,7 +576,7 @@
         </div>
     </div>
 
-    <script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
         // Database setup
         let db;
         const DB_NAME = 'CycleCountingDB';
@@ -965,10 +986,232 @@
             }
         }
 
-        // Initialize the app
-        document.addEventListener('DOMContentLoaded', function() {
-            initDB();
-        });
+        // Excel import functionality
+        async function importFromExcel() {
+            const fileInput = document.getElementById('excel-file');
+            const file = fileInput.files[0];
+
+            if (!file) {
+                showImportResult('Please select an Excel file first.', 'error');
+                return;
+            }
+
+            // Check file extension
+            const validExtensions = ['.xlsx', '.xls'];
+            const fileName = file.name.toLowerCase();
+            const isValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
+
+            if (!isValidExtension) {
+                showImportResult('Please select a valid Excel file (.xlsx or .xls).', 'error');
+                return;
+            }
+
+            // Show progress
+            document.getElementById('import-progress').style.display = 'flex';
+            updateProgress(0, 'Reading file...');
+
+            try {
+                const data = await readExcelFile(file);
+                updateProgress(25, 'Validating data...');
+
+                const validation = validateExcelData(data);
+                if (!validation.valid) {
+                    showImportResult(validation.error, 'error');
+                    document.getElementById('import-progress').style.display = 'none';
+                    return;
+                }
+
+                updateProgress(50, 'Processing data...');
+                await processExcelImport(validation.data);
+
+                updateProgress(100, 'Import complete!');
+                setTimeout(() => {
+                    document.getElementById('import-progress').style.display = 'none';
+                }, 1000);
+
+                showImportResult(`Successfully imported ${validation.data.length} items from Excel file.`, 'success');
+
+                // Clear file input
+                fileInput.value = '';
+
+            } catch (error) {
+                console.error('Import error:', error);
+                showImportResult('Error importing Excel file. Please check the file format and try again.', 'error');
+                document.getElementById('import-progress').style.display = 'none';
+            }
+        }
+
+        function readExcelFile(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    try {
+                        const data = new Uint8Array(e.target.result);
+                        const workbook = XLSX.read(data, { type: 'array' });
+
+                        // Get the first worksheet
+                        const sheetName = workbook.SheetNames[0];
+                        const worksheet = workbook.Sheets[sheetName];
+
+                        // Convert to JSON
+                        const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+                            header: 1,
+                            defval: ''
+                        });
+
+                        resolve(jsonData);
+                    } catch (error) {
+                        reject(error);
+                    }
+                };
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+        }
+
+        function validateExcelData(data) {
+            if (!data || data.length < 2) {
+                return { valid: false, error: 'Excel file must contain at least a header row and one data row.' };
+            }
+
+            const headers = data[0].map(h => h.toString().toLowerCase().trim());
+            const requiredColumns = ['sku', 'lot', 'expiry date', 'bin location', 'bin quantity'];
+
+            // Check if all required columns are present
+            const missingColumns = requiredColumns.filter(col =>
+                !headers.some(header =>
+                    header.includes(col.replace(' ', '')) ||
+                    header === col ||
+                    (col === 'expiry date' && (header.includes('expiry') || header.includes('expiration')))
+                )
+            );
+
+            if (missingColumns.length > 0) {
+                return {
+                    valid: false,
+                    error: `Missing required columns: ${missingColumns.join(', ')}. Expected columns: SKU, LOT, Expiry Date, Bin Location, Bin Quantity`
+                };
+            }
+
+            // Map column indices
+            const columnMap = {};
+            requiredColumns.forEach(col => {
+                const index = headers.findIndex(header =>
+                    header.includes(col.replace(' ', '')) ||
+                    header === col ||
+                    (col === 'expiry date' && (header.includes('expiry') || header.includes('expiration')))
+                );
+                columnMap[col] = index;
+            });
+
+            // Validate and process data rows
+            const processedData = [];
+            let errorMessages = [];
+
+            for (let i = 1; i < data.length; i++) {
+                const row = data[i];
+                if (!row || row.every(cell => cell === '')) continue; // Skip empty rows
+
+                try {
+                    const item = {
+                        sku: row[columnMap['sku']]?.toString().trim(),
+                        lot: row[columnMap['lot']]?.toString().trim() || '',
+                        expiry: parseExpiryDate(row[columnMap['expiry date']]),
+                        binLocation: row[columnMap['bin location']]?.toString().trim(),
+                        binQuantity: parseFloat(row[columnMap['bin quantity']]) || 0
+                    };
+
+                    // Validate required fields
+                    if (!item.sku || !item.binLocation) {
+                        errorMessages.push(`Row ${i + 1}: Missing required SKU or Bin Location`);
+                        continue;
+                    }
+
+                    if (isNaN(item.binQuantity) || item.binQuantity < 0) {
+                        errorMessages.push(`Row ${i + 1}: Invalid bin quantity`);
+                        continue;
+                    }
+
+                    processedData.push(item);
+                } catch (error) {
+                    errorMessages.push(`Row ${i + 1}: Error processing data - ${error.message}`);
+                }
+            }
+
+            if (processedData.length === 0) {
+                return { valid: false, error: 'No valid data rows found in the Excel file.' };
+            }
+
+            if (errorMessages.length > 0) {
+                return {
+                    valid: false,
+                    error: `Data validation errors:\n${errorMessages.slice(0, 5).join('\n')}${errorMessages.length > 5 ? '\n...and more errors' : ''}`
+                };
+            }
+
+            return { valid: true, data: processedData };
+        }
+
+        function parseExpiryDate(dateValue) {
+            if (!dateValue) return '';
+
+            // Handle different date formats
+            if (typeof dateValue === 'number') {
+                // Excel date serial number
+                const excelDate = new Date((dateValue - 25569) * 86400 * 1000);
+                return excelDate.toISOString().split('T')[0];
+            }
+
+            if (typeof dateValue === 'string') {
+                // Try to parse string date
+                const parsed = new Date(dateValue);
+                if (!isNaN(parsed.getTime())) {
+                    return parsed.toISOString().split('T')[0];
+                }
+            }
+
+            // If it's already a date object or can't be parsed, return as string
+            return dateValue.toString();
+        }
+
+        async function processExcelImport(data) {
+            const transaction = db.transaction(['baseline'], 'readwrite');
+            const store = transaction.objectStore('baseline');
+
+            let imported = 0;
+            const total = data.length;
+
+            for (const item of data) {
+                const itemWithTimestamp = {
+                    ...item,
+                    createdAt: new Date().toISOString()
+                };
+
+                await new Promise((resolve, reject) => {
+                    const request = store.add(itemWithTimestamp);
+                    request.onsuccess = () => {
+                        imported++;
+                        updateProgress(50 + (imported / total) * 45, `Imported ${imported}/${total} items...`);
+                        resolve();
+                    };
+                    request.onerror = reject;
+                });
+            }
+
+            // Reload the table and update cycle count options
+            loadBaselineItems();
+            loadCycleCountOptions();
+        }
+
+        function updateProgress(percent, text) {
+            document.getElementById('progress-bar').style.width = percent + '%';
+            document.getElementById('progress-text').textContent = text;
+        }
+
+        function showImportResult(message, type) {
+            const resultsDiv = document.getElementById('import-results');
+            resultsDiv.innerHTML = `<div class="alert alert-${type}" style="white-space: pre-line;">${message}</div>`;
+        }
     </script>
 </body>
 </html>
