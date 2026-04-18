@@ -407,14 +407,14 @@
                 <div class="card">
                     <h2 style="margin-bottom: 20px;">Import Baseline from Excel</h2>
                     <p style="margin-bottom: 20px; opacity: 0.8;">
-                        Upload an Excel file (.xlsx or .xls) with columns: SKU, LOT, Expiry Date, Bin Location, Bin Quantity
+                        Upload an Excel file (.xlsx or .xls), then map each column to the baseline fields.
                     </p>
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label for="excel-file">Select Excel File:</label>
                         <input type="file" id="excel-file" accept=".xlsx,.xls" style="margin-top: 8px;">
                     </div>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <button class="btn btn-primary" onclick="importFromExcel()">Import from Excel</button>
+                    <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 16px;">
+                        <button class="btn btn-primary" onclick="importFromExcel()">Load Excel File</button>
                         <div id="import-progress" style="display: none;">
                             <span id="progress-text">Processing...</span>
                             <div style="width: 200px; height: 8px; background: rgba(255,255,255,0.2); border-radius: 4px; margin-left: 10px;">
@@ -422,11 +422,19 @@
                             </div>
                         </div>
                     </div>
+                    <div id="excel-mapping-panel" style="display: none; margin-top: 20px;">
+                        <div class="form-grid" id="mapping-selects"></div>
+                        <div style="margin-top: 20px; display: flex; gap: 10px;">
+                            <button class="btn btn-primary" onclick="confirmExcelImport()">Import Mapped Data</button>
+                            <button class="btn btn-secondary" onclick="resetExcelMapping()">Reset</button>
+                        </div>
+                        <div id="excel-preview" style="margin-top: 20px;"></div>
+                    </div>
                     <div id="import-results" style="margin-top: 15px;"></div>
                 </div>
 
                 <div class="card">
-                    <h2 style="margin-bottom: 20px;">Add Baseline Item Manually</h2>
+                    <h2 style="margin-bottom: 20px;">Add Baseline Item Manually</h2
                     <form id="baseline-form">
                         <div class="form-grid">
                             <div class="form-group">
@@ -987,6 +995,8 @@
         }
 
         // Excel import functionality
+        let excelRawData = null;
+
         async function importFromExcel() {
             const fileInput = document.getElementById('excel-file');
             const file = fileInput.files[0];
@@ -996,7 +1006,6 @@
                 return;
             }
 
-            // Check file extension
             const validExtensions = ['.xlsx', '.xls'];
             const fileName = file.name.toLowerCase();
             const isValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
@@ -1006,39 +1015,165 @@
                 return;
             }
 
-            // Show progress
             document.getElementById('import-progress').style.display = 'flex';
             updateProgress(0, 'Reading file...');
+            showImportResult('', '');
+            resetExcelMapping();
 
             try {
                 const data = await readExcelFile(file);
-                updateProgress(25, 'Validating data...');
+                if (!data || data.length < 2) {
+                    throw new Error('Excel file must contain at least a header row and one data row.');
+                }
 
-                const validation = validateExcelData(data);
-                if (!validation.valid) {
-                    showImportResult(validation.error, 'error');
+                excelRawData = data;
+                showExcelMappingPanel(data);
+                updateProgress(100, 'Ready to map columns');
+                setTimeout(() => {
                     document.getElementById('import-progress').style.display = 'none';
+                }, 500);
+            } catch (error) {
+                console.error('Import error:', error);
+                showImportResult('Error loading Excel file. Please check the file and try again.', 'error');
+                document.getElementById('import-progress').style.display = 'none';
+            }
+        }
+
+        function showExcelMappingPanel(data) {
+            const headers = data[0].map(header => header?.toString?.().trim() || '');
+            const mappingFields = [
+                { label: 'SKU', required: true },
+                { label: 'LOT', required: false },
+                { label: 'Expiry Date', required: false },
+                { label: 'Bin Location', required: true },
+                { label: 'Bin Quantity', required: true }
+            ];
+
+            const mappingContainer = document.getElementById('mapping-selects');
+            mappingContainer.innerHTML = '';
+
+            mappingFields.forEach(field => {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'form-group';
+
+                const label = document.createElement('label');
+                label.textContent = `${field.label}${field.required ? ' *' : ''}`;
+                wrapper.appendChild(label);
+
+                const select = document.createElement('select');
+                select.id = `map-${field.label.replace(/\s+/g, '-').toLowerCase()}`;
+                select.innerHTML = `<option value="">-- Select column --</option>` +
+                    headers.map((header, index) => `<option value="${index}">${header || '(blank header)'} (${index + 1})</option>`).join('');
+
+                wrapper.appendChild(select);
+                mappingContainer.appendChild(wrapper);
+            });
+
+            document.getElementById('excel-preview').innerHTML = buildExcelPreview(headers, data.slice(1, 6));
+            document.getElementById('excel-mapping-panel').style.display = 'block';
+        }
+
+        function buildExcelPreview(headers, rows) {
+            return `
+                <div style="margin-top: 20px;">
+                    <p style="opacity: 0.85; margin-bottom: 10px;">Preview of the first rows from your file:</p>
+                    <div class="table-container">
+                        <table class="inventory-table">
+                            <thead>
+                                <tr>${headers.map(header => `<th>${header || '(blank)'}</th>`).join('')}</tr>
+                            </thead>
+                            <tbody>
+                                ${rows.map(row => `<tr>${headers.map((_, index) => `<td>${row[index] ?? ''}</td>`).join('')}</tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            `;
+        }
+
+        function resetExcelMapping() {
+            document.getElementById('excel-mapping-panel').style.display = 'none';
+            document.getElementById('excel-preview').innerHTML = '';
+            excelRawData = null;
+        }
+
+        function confirmExcelImport() {
+            if (!excelRawData) {
+                showImportResult('No Excel data loaded. Please choose a file first.', 'error');
+                return;
+            }
+
+            const mapping = {
+                sku: getSelectedMapping('sku'),
+                lot: getSelectedMapping('lot'),
+                expiry: getSelectedMapping('expiry-date'),
+                binLocation: getSelectedMapping('bin-location'),
+                binQuantity: getSelectedMapping('bin-quantity')
+            };
+
+            if (!mapping.sku || !mapping.binLocation || !mapping.binQuantity) {
+                showImportResult('Please map SKU, Bin Location, and Bin Quantity before importing.', 'error');
+                return;
+            }
+
+            const rows = excelRawData.slice(1);
+            const items = [];
+            const errors = [];
+
+            rows.forEach((row, rowIndex) => {
+                if (!row || row.every(cell => cell === '')) return;
+
+                const item = {
+                    sku: getExcelCellValue(row, mapping.sku),
+                    lot: mapping.lot !== '' ? getExcelCellValue(row, mapping.lot) : '',
+                    expiry: mapping.expiry !== '' ? parseExpiryDate(getExcelCellValue(row, mapping.expiry)) : '',
+                    binLocation: getExcelCellValue(row, mapping.binLocation),
+                    binQuantity: parseFloat(getExcelCellValue(row, mapping.binQuantity))
+                };
+
+                if (!item.sku) {
+                    errors.push(`Row ${rowIndex + 2}: SKU is required.`);
+                    return;
+                }
+                if (!item.binLocation) {
+                    errors.push(`Row ${rowIndex + 2}: Bin Location is required.`);
+                    return;
+                }
+                if (isNaN(item.binQuantity) || item.binQuantity < 0) {
+                    errors.push(`Row ${rowIndex + 2}: Bin Quantity must be a valid number.`);
                     return;
                 }
 
-                updateProgress(50, 'Processing data...');
-                await processExcelImport(validation.data);
+                items.push(item);
+            });
 
-                updateProgress(100, 'Import complete!');
+            if (items.length === 0) {
+                showImportResult(`No valid rows found to import.${errors.length ? '\n' + errors.slice(0, 5).join('\n') : ''}`, 'error');
+                return;
+            }
+
+            document.getElementById('import-progress').style.display = 'flex';
+            updateProgress(10, 'Importing mapped rows...');
+            processExcelImport(items).then(() => {
+                showImportResult(`Successfully imported ${items.length} items from Excel file.${errors.length ? '\nSome rows were skipped:\n' + errors.slice(0, 5).join('\n') : ''}`, 'success');
+                resetExcelMapping();
+                document.getElementById('excel-file').value = '';
                 setTimeout(() => {
                     document.getElementById('import-progress').style.display = 'none';
                 }, 1000);
-
-                showImportResult(`Successfully imported ${validation.data.length} items from Excel file.`, 'success');
-
-                // Clear file input
-                fileInput.value = '';
-
-            } catch (error) {
-                console.error('Import error:', error);
-                showImportResult('Error importing Excel file. Please check the file format and try again.', 'error');
+            }).catch(error => {
+                console.error(error);
+                showImportResult('Error importing mapped Excel rows. Please try again.', 'error');
                 document.getElementById('import-progress').style.display = 'none';
-            }
+            });
+        }
+
+        function getSelectedMapping(name) {
+            return document.getElementById(`map-${name}`)?.value ?? '';
+        }
+
+        function getExcelCellValue(row, index) {
+            return row[index] !== undefined && row[index] !== null ? row[index].toString().trim() : '';
         }
 
         function readExcelFile(file) {
@@ -1048,17 +1183,12 @@
                     try {
                         const data = new Uint8Array(e.target.result);
                         const workbook = XLSX.read(data, { type: 'array' });
-
-                        // Get the first worksheet
                         const sheetName = workbook.SheetNames[0];
                         const worksheet = workbook.Sheets[sheetName];
-
-                        // Convert to JSON
                         const jsonData = XLSX.utils.sheet_to_json(worksheet, {
                             header: 1,
                             defval: ''
                         });
-
                         resolve(jsonData);
                     } catch (error) {
                         reject(error);
@@ -1069,115 +1199,24 @@
             });
         }
 
-        function validateExcelData(data) {
-            if (!data || data.length < 2) {
-                return { valid: false, error: 'Excel file must contain at least a header row and one data row.' };
-            }
-
-            const headers = data[0].map(h => h.toString().toLowerCase().trim());
-            const requiredColumns = ['sku', 'lot', 'expiry date', 'bin location', 'bin quantity'];
-
-            // Check if all required columns are present
-            const missingColumns = requiredColumns.filter(col =>
-                !headers.some(header =>
-                    header.includes(col.replace(' ', '')) ||
-                    header === col ||
-                    (col === 'expiry date' && (header.includes('expiry') || header.includes('expiration')))
-                )
-            );
-
-            if (missingColumns.length > 0) {
-                return {
-                    valid: false,
-                    error: `Missing required columns: ${missingColumns.join(', ')}. Expected columns: SKU, LOT, Expiry Date, Bin Location, Bin Quantity`
-                };
-            }
-
-            // Map column indices
-            const columnMap = {};
-            requiredColumns.forEach(col => {
-                const index = headers.findIndex(header =>
-                    header.includes(col.replace(' ', '')) ||
-                    header === col ||
-                    (col === 'expiry date' && (header.includes('expiry') || header.includes('expiration')))
-                );
-                columnMap[col] = index;
-            });
-
-            // Validate and process data rows
-            const processedData = [];
-            let errorMessages = [];
-
-            for (let i = 1; i < data.length; i++) {
-                const row = data[i];
-                if (!row || row.every(cell => cell === '')) continue; // Skip empty rows
-
-                try {
-                    const item = {
-                        sku: row[columnMap['sku']]?.toString().trim(),
-                        lot: row[columnMap['lot']]?.toString().trim() || '',
-                        expiry: parseExpiryDate(row[columnMap['expiry date']]),
-                        binLocation: row[columnMap['bin location']]?.toString().trim(),
-                        binQuantity: parseFloat(row[columnMap['bin quantity']]) || 0
-                    };
-
-                    // Validate required fields
-                    if (!item.sku || !item.binLocation) {
-                        errorMessages.push(`Row ${i + 1}: Missing required SKU or Bin Location`);
-                        continue;
-                    }
-
-                    if (isNaN(item.binQuantity) || item.binQuantity < 0) {
-                        errorMessages.push(`Row ${i + 1}: Invalid bin quantity`);
-                        continue;
-                    }
-
-                    processedData.push(item);
-                } catch (error) {
-                    errorMessages.push(`Row ${i + 1}: Error processing data - ${error.message}`);
-                }
-            }
-
-            if (processedData.length === 0) {
-                return { valid: false, error: 'No valid data rows found in the Excel file.' };
-            }
-
-            if (errorMessages.length > 0) {
-                return {
-                    valid: false,
-                    error: `Data validation errors:\n${errorMessages.slice(0, 5).join('\n')}${errorMessages.length > 5 ? '\n...and more errors' : ''}`
-                };
-            }
-
-            return { valid: true, data: processedData };
-        }
-
         function parseExpiryDate(dateValue) {
             if (!dateValue) return '';
-
-            // Handle different date formats
             if (typeof dateValue === 'number') {
-                // Excel date serial number
                 const excelDate = new Date((dateValue - 25569) * 86400 * 1000);
                 return excelDate.toISOString().split('T')[0];
             }
-
             if (typeof dateValue === 'string') {
-                // Try to parse string date
                 const parsed = new Date(dateValue);
                 if (!isNaN(parsed.getTime())) {
                     return parsed.toISOString().split('T')[0];
                 }
             }
-
-            // If it's already a date object or can't be parsed, return as string
             return dateValue.toString();
         }
 
         async function processExcelImport(data) {
             const transaction = db.transaction(['baseline'], 'readwrite');
             const store = transaction.objectStore('baseline');
-
             let imported = 0;
             const total = data.length;
 
@@ -1186,19 +1225,16 @@
                     ...item,
                     createdAt: new Date().toISOString()
                 };
-
                 await new Promise((resolve, reject) => {
                     const request = store.add(itemWithTimestamp);
                     request.onsuccess = () => {
                         imported++;
-                        updateProgress(50 + (imported / total) * 45, `Imported ${imported}/${total} items...`);
+                        updateProgress(10 + (imported / total) * 80, `Imported ${imported}/${total} items...`);
                         resolve();
                     };
                     request.onerror = reject;
                 });
             }
-
-            // Reload the table and update cycle count options
             loadBaselineItems();
             loadCycleCountOptions();
         }
@@ -1210,6 +1246,10 @@
 
         function showImportResult(message, type) {
             const resultsDiv = document.getElementById('import-results');
+            if (!message) {
+                resultsDiv.innerHTML = '';
+                return;
+            }
             resultsDiv.innerHTML = `<div class="alert alert-${type}" style="white-space: pre-line;">${message}</div>`;
         }
     </script>
