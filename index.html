@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Baseline Viewer</title>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <title>Inventory Baseline - Sign In</title>
     <style>
         * {
             margin: 0;
@@ -27,169 +26,98 @@
             border-radius: 10px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             padding: 40px;
-            max-width: 1200px;
+            max-width: 400px;
             width: 100%;
         }
 
-        h1 {
-            color: #333;
-            margin-bottom: 10px;
-            font-size: 2em;
-        }
-
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 1em;
-        }
-
-        .upload-section {
-            background: #f8f9fa;
-            border: 2px dashed #667eea;
-            border-radius: 8px;
-            padding: 30px;
+        .logo {
             text-align: center;
             margin-bottom: 30px;
-            cursor: pointer;
-            transition: all 0.3s ease;
         }
 
-        .upload-section:hover {
-            background: #f0f2ff;
-            border-color: #764ba2;
-        }
-
-        .upload-section input[type="file"] {
-            display: none;
-        }
-
-        .upload-label {
-            cursor: pointer;
-            display: block;
-        }
-
-        .upload-icon {
-            font-size: 3em;
-            margin-bottom: 15px;
-        }
-
-        .upload-text {
+        .logo h1 {
+            font-size: 2em;
             color: #333;
-            font-size: 1.1em;
             margin-bottom: 5px;
         }
 
-        .upload-hint {
-            color: #999;
-            font-size: 0.9em;
+        .logo p {
+            color: #666;
+            font-size: 0.95em;
         }
 
-        .button-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 20px;
-            justify-content: center;
-            flex-wrap: wrap;
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: #333;
+            font-weight: 500;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s ease;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: #667eea;
         }
 
         button {
-            padding: 12px 24px;
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
             border: none;
             border-radius: 6px;
             font-size: 1em;
+            font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
         }
 
-        .btn-primary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        .btn-primary:hover {
+        button:hover {
             transform: translateY(-2px);
             box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
         }
 
-        .btn-secondary {
-            background: #e9ecef;
-            color: #333;
-        }
-
-        .btn-secondary:hover {
-            background: #dee2e6;
-        }
-
-        .btn-secondary:disabled {
-            background: #dee2e6;
-            cursor: not-allowed;
+        button:disabled {
             opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
         }
 
-        .file-info {
-            background: #e7f3ff;
-            border-left: 4px solid #2196F3;
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-            display: none;
+        .link-group {
+            text-align: center;
+            margin-top: 20px;
         }
 
-        .file-info.show {
-            display: block;
+        .link-group a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            cursor: pointer;
         }
 
-        .file-info strong {
-            color: #1976D2;
-        }
-
-        .table-container {
-            overflow-x: auto;
-            margin-top: 30px;
-            display: none;
-        }
-
-        .table-container.show {
-            display: block;
-        }
-
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 0.95em;
-        }
-
-        thead {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-        }
-
-        th {
-            padding: 15px;
-            text-align: left;
-            font-weight: 600;
-        }
-
-        td {
-            padding: 12px 15px;
-            border-bottom: 1px solid #e0e0e0;
-        }
-
-        tbody tr:hover {
-            background: #f5f5f5;
-        }
-
-        tbody tr:nth-child(even) {
-            background: #fafafa;
+        .link-group a:hover {
+            text-decoration: underline;
         }
 
         .error {
             background: #ffebee;
-            border-left: 4px solid #f44336;
+            border: 1px solid #f44336;
             color: #c62828;
-            padding: 15px;
+            padding: 12px;
             margin-bottom: 20px;
-            border-radius: 4px;
+            border-radius: 6px;
             display: none;
         }
 
@@ -199,11 +127,11 @@
 
         .success {
             background: #e8f5e9;
-            border-left: 4px solid #4caf50;
+            border: 1px solid #4caf50;
             color: #2e7d32;
-            padding: 15px;
+            padding: 12px;
             margin-bottom: 20px;
-            border-radius: 4px;
+            border-radius: 6px;
             display: none;
         }
 
@@ -211,256 +139,240 @@
             display: block;
         }
 
-        .stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 20px;
-            margin-bottom: 20px;
+        .form-toggle {
+            display: none;
         }
 
-        .stat-card {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
+        .form-toggle.active {
+            display: block;
+        }
+
+        .divider {
             text-align: center;
-            border-top: 3px solid #667eea;
+            color: #999;
+            margin: 20px 0;
         }
 
-        .stat-value {
-            font-size: 2em;
-            font-weight: bold;
-            color: #667eea;
-        }
-
-        .stat-label {
-            color: #666;
-            font-size: 0.9em;
-            margin-top: 5px;
-        }
-
-        @media (max-width: 768px) {
+        @media (max-width: 480px) {
             .container {
-                padding: 20px;
+                padding: 30px 20px;
             }
 
-            h1 {
+            .logo h1 {
                 font-size: 1.5em;
             }
-
-            table {
-                font-size: 0.85em;
-            }
-
-            th, td {
-                padding: 10px;
-            }
         }
+    </style>
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>📊 Inventory Baseline</h1>
-        <p class="subtitle">Upload and view your Excel inventory file</p>
+        <div class="logo">
+            <h1>📊 Inventory Baseline</h1>
+            <p>Manage your inventory anywhere</p>
+        </div>
 
         <div id="errorMessage" class="error"></div>
         <div id="successMessage" class="success"></div>
 
-        <div class="upload-section" id="uploadSection">
-            <label for="fileInput" class="upload-label">
-                <div class="upload-icon">📁</div>
-                <div class="upload-text">Click to upload or drag and drop</div>
-                <div class="upload-hint">Excel files (.xlsx, .xls, .csv)</div>
-            </label>
-            <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" />
+        <!-- Sign In Form -->
+        <div id="signinForm" class="form-toggle active">
+            <form id="signinFormElement">
+                <div class="form-group">
+                    <label for="signinEmail">Email</label>
+                    <input type="email" id="signinEmail" required placeholder="Enter your email">
+                </div>
+                <div class="form-group">
+                    <label for="signinPassword">Password</label>
+                    <input type="password" id="signinPassword" required placeholder="Enter your password">
+                </div>
+                <button type="submit">Sign In</button>
+            </form>
+            <div class="link-group">
+                Don't have an account? <a onclick="toggleForms()">Create one</a>
+            </div>
         </div>
 
-        <div class="button-group">
-            <button class="btn-primary" id="uploadButton">Choose File</button>
-            <button class="btn-secondary" id="clearButton" disabled>Clear Data</button>
-        </div>
-
-        <div id="fileInfo" class="file-info">
-            <strong>Loaded File:</strong> <span id="fileName"></span>
-        </div>
-
-        <div id="stats" class="stats"></div>
-
-        <div id="tableContainer" class="table-container">
-            <table id="dataTable">
-                <thead>
-                    <tr id="headerRow"></tr>
-                </thead>
-                <tbody id="tableBody"></tbody>
-            </table>
+        <!-- Sign Up Form -->
+        <div id="signupForm" class="form-toggle">
+            <form id="signupFormElement">
+                <div class="form-group">
+                    <label for="signupName">Full Name</label>
+                    <input type="text" id="signupName" required placeholder="Enter your full name">
+                </div>
+                <div class="form-group">
+                    <label for="signupEmail">Email</label>
+                    <input type="email" id="signupEmail" required placeholder="Enter your email">
+                </div>
+                <div class="form-group">
+                    <label for="signupPassword">Password</label>
+                    <input type="password" id="signupPassword" required placeholder="Create a password (min 6 characters)">
+                </div>
+                <div class="form-group">
+                    <label for="signupConfirmPassword">Confirm Password</label>
+                    <input type="password" id="signupConfirmPassword" required placeholder="Confirm your password">
+                </div>
+                <button type="submit">Create Account</button>
+            </form>
+            <div class="link-group">
+                Already have an account? <a onclick="toggleForms()">Sign in</a>
+            </div>
         </div>
     </div>
 
     <script>
-        const fileInput = document.getElementById('fileInput');
-        const uploadButton = document.getElementById('uploadButton');
-        const clearButton = document.getElementById('clearButton');
-        const uploadSection = document.getElementById('uploadSection');
-        const errorMessage = document.getElementById('errorMessage');
-        const successMessage = document.getElementById('successMessage');
-        const fileInfo = document.getElementById('fileInfo');
-        const fileName = document.getElementById('fileName');
-        const tableContainer = document.getElementById('tableContainer');
-        const headerRow = document.getElementById('headerRow');
-        const tableBody = document.getElementById('tableBody');
-        const statsContainer = document.getElementById('stats');
+        // Authentication Management
+        class AuthManager {
+            constructor() {
+                this.usersKey = 'inventory_users';
+                this.currentUserKey = 'inventory_current_user';
+                this.initializeStorage();
+            }
 
-        // Upload button click
-        uploadButton.addEventListener('click', () => {
-            fileInput.click();
-        });
+            initializeStorage() {
+                if (!localStorage.getItem(this.usersKey)) {
+                    localStorage.setItem(this.usersKey, JSON.stringify({}));
+                }
+            }
 
-        // File input change
-        fileInput.addEventListener('change', handleFileSelect);
+            register(name, email, password) {
+                const users = JSON.parse(localStorage.getItem(this.usersKey));
 
-        // Drag and drop
-        uploadSection.addEventListener('dragover', (e) => {
-            e.preventDefault();
-            uploadSection.style.background = '#f0f2ff';
-        });
+                if (users[email]) {
+                    throw new Error('Email already registered');
+                }
 
-        uploadSection.addEventListener('dragleave', () => {
-            uploadSection.style.background = '#f8f9fa';
-        });
+                if (password.length < 6) {
+                    throw new Error('Password must be at least 6 characters');
+                }
 
-        uploadSection.addEventListener('drop', (e) => {
-            e.preventDefault();
-            uploadSection.style.background = '#f8f9fa';
-            fileInput.files = e.dataTransfer.files;
-            handleFileSelect();
-        });
-
-        // Clear button
-        clearButton.addEventListener('click', () => {
-            fileInput.value = '';
-            tableContainer.classList.remove('show');
-            fileInfo.classList.remove('show');
-            statsContainer.innerHTML = '';
-            clearButton.disabled = true;
-            uploadButton.disabled = false;
-            hideMessages();
-        });
-
-        function handleFileSelect() {
-            const file = fileInput.files[0];
-            
-            if (!file) return;
-
-            hideMessages();
-
-            try {
-                const reader = new FileReader();
-                
-                reader.onload = (e) => {
-                    try {
-                        const data = e.target.result;
-                        const workbook = XLSX.read(data, { type: 'array' });
-                        
-                        if (workbook.SheetNames.length === 0) {
-                            showError('No sheets found in the file.');
-                            return;
-                        }
-
-                        // Get first sheet
-                        const sheetName = workbook.SheetNames[0];
-                        const worksheet = workbook.Sheets[sheetName];
-                        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-
-                        if (jsonData.length === 0) {
-                            showError('The file is empty or could not be read.');
-                            return;
-                        }
-
-                        displayData(jsonData, file.name);
-                        showSuccess(`Successfully loaded "${file.name}"`);
-                        clearButton.disabled = false;
-                        uploadButton.disabled = true;
-                    } catch (error) {
-                        showError(`Error processing file: ${error.message}`);
-                    }
+                users[email] = {
+                    name,
+                    email,
+                    password: this.hashPassword(password),
+                    createdAt: new Date().toISOString()
                 };
 
-                reader.onerror = () => {
-                    showError('Error reading the file. Please try again.');
-                };
+                localStorage.setItem(this.usersKey, JSON.stringify(users));
+                return true;
+            }
 
-                reader.readAsArrayBuffer(file);
-            } catch (error) {
-                showError(`Error: ${error.message}`);
+            login(email, password) {
+                const users = JSON.parse(localStorage.getItem(this.usersKey));
+
+                if (!users[email]) {
+                    throw new Error('Email not found');
+                }
+
+                const user = users[email];
+                if (this.hashPassword(password) !== user.password) {
+                    throw new Error('Incorrect password');
+                }
+
+                // Store current user session
+                localStorage.setItem(this.currentUserKey, JSON.stringify({
+                    email: user.email,
+                    name: user.name,
+                    loginTime: new Date().toISOString()
+                }));
+
+                return true;
+            }
+
+            logout() {
+                localStorage.removeItem(this.currentUserKey);
+            }
+
+            getCurrentUser() {
+                const user = localStorage.getItem(this.currentUserKey);
+                return user ? JSON.parse(user) : null;
+            }
+
+            isLoggedIn() {
+                return this.getCurrentUser() !== null;
+            }
+
+            hashPassword(password) {
+                // Simple hash for demo (use proper hashing in production)
+                return btoa(password);
             }
         }
 
-        function displayData(data, name) {
-            // Clear previous data
-            headerRow.innerHTML = '';
-            tableBody.innerHTML = '';
-            statsContainer.innerHTML = '';
+        const auth = new AuthManager();
 
-            // Get headers (first row)
-            const headers = data[0] || [];
-
-            // Create header row
-            headers.forEach(header => {
-                const th = document.createElement('th');
-                th.textContent = header || 'Column';
-                headerRow.appendChild(th);
-            });
-
-            // Create data rows
-            let rowCount = 0;
-            for (let i = 1; i < data.length; i++) {
-                const row = data[i];
-                if (!row || row.every(cell => !cell)) continue; // Skip empty rows
-
-                const tr = document.createElement('tr');
-                headers.forEach((header, index) => {
-                    const td = document.createElement('td');
-                    td.textContent = row[index] || '';
-                    tr.appendChild(td);
-                });
-                tableBody.appendChild(tr);
-                rowCount++;
-            }
-
-            // Update file info
-            fileName.textContent = name;
-            fileInfo.classList.add('show');
-
-            // Display stats
-            const statHTML = `
-                <div class="stat-card">
-                    <div class="stat-value">${headers.length}</div>
-                    <div class="stat-label">Columns</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-value">${rowCount}</div>
-                    <div class="stat-label">Rows</div>
-                </div>
-            `;
-            statsContainer.innerHTML = statHTML;
-
-            // Show table
-            tableContainer.classList.add('show');
+        // Check if already logged in
+        if (auth.isLoggedIn()) {
+            window.location.href = 'dashboard.html';
         }
 
+        // Form toggle
+        function toggleForms() {
+            document.getElementById('signinForm').classList.toggle('active');
+            document.getElementById('signupForm').classList.toggle('active');
+            hideMessages();
+        }
+
+        // Message handlers
         function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.classList.add('show');
+            const errorEl = document.getElementById('errorMessage');
+            errorEl.textContent = message;
+            errorEl.classList.add('show');
+            setTimeout(() => errorEl.classList.remove('show'), 5000);
         }
 
         function showSuccess(message) {
-            successMessage.textContent = message;
-            successMessage.classList.add('show');
+            const successEl = document.getElementById('successMessage');
+            successEl.textContent = message;
+            successEl.classList.add('show');
+            setTimeout(() => successEl.classList.remove('show'), 5000);
         }
 
         function hideMessages() {
-            errorMessage.classList.remove('show');
-            successMessage.classList.remove('show');
+            document.getElementById('errorMessage').classList.remove('show');
+            document.getElementById('successMessage').classList.remove('show');
         }
+
+        // Sign in handler
+        document.getElementById('signinFormElement').addEventListener('submit', (e) => {
+            e.preventDefault();
+            try {
+                const email = document.getElementById('signinEmail').value;
+                const password = document.getElementById('signinPassword').value;
+
+                auth.login(email, password);
+                showSuccess('Signing in...');
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 1000);
+            } catch (error) {
+                showError(error.message);
+            }
+        });
+
+        // Sign up handler
+        document.getElementById('signupFormElement').addEventListener('submit', (e) => {
+            e.preventDefault();
+            try {
+                const name = document.getElementById('signupName').value;
+                const email = document.getElementById('signupEmail').value;
+                const password = document.getElementById('signupPassword').value;
+                const confirmPassword = document.getElementById('signupConfirmPassword').value;
+
+                if (password !== confirmPassword) {
+                    throw new Error('Passwords do not match');
+                }
+
+                auth.register(name, email, password);
+                showSuccess('Account created! Signing in...');
+                
+                setTimeout(() => {
+                    auth.login(email, password);
+                    window.location.href = 'dashboard.html';
+                }, 1500);
+            } catch (error) {
+                showError(error.message);
+            }
+        });
     </script>
 </body>
 </html>
