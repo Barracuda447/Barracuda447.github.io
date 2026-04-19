@@ -5,10 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Baseline Dashboard</title>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js"></script>
     <style>
         * {
             margin: 0;
@@ -442,48 +438,71 @@
     </div>
 
     <script>
-        // Initialize Firebase - SAME CONFIG AS index.html
-        const firebaseConfig = {
-            apiKey: "AIzaSyBHVZs4xR4n1ZZmVxYZ5E1qZ5E1qZ5E1qZ",
-            authDomain: "inventory-baseline.firebaseapp.com",
-            projectId: "inventory-baseline",
-            storageBucket: "inventory-baseline.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abc123def456"
-        };
+        // Authentication Manager using localStorage
+        class AuthManager {
+            constructor() {
+                this.usersKey = 'inventory_users';
+                this.currentUserKey = 'inventory_current_user';
+                this.userFilesKey = 'inventory_user_files_';
+            }
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+            getCurrentUser() {
+                const user = localStorage.getItem(this.currentUserKey);
+                return user ? JSON.parse(user) : null;
+            }
 
-        let currentUser = null;
-
-        // Check authentication on page load
-        auth.onAuthStateChanged(async (user) => {
-            if (!user) {
+            logout() {
+                localStorage.removeItem(this.currentUserKey);
                 window.location.href = 'index.html';
-                return;
             }
 
-            currentUser = user;
-
-            // Get user profile from Firestore
-            const userDoc = await db.collection('users').doc(user.uid).get();
-            if (userDoc.exists) {
-                document.getElementById('userName').textContent = `Welcome, ${userDoc.data().name}!`;
-            } else {
-                document.getElementById('userName').textContent = `Welcome, ${user.email}!`;
+            getUserFilesKey(email) {
+                return this.userFilesKey + email;
             }
 
-            // Load saved files
-            loadSavedFiles();
-        });
+            saveFile(email, fileName, fileData) {
+                const key = this.getUserFilesKey(email);
+                const files = JSON.parse(localStorage.getItem(key) || '{}');
+                files[fileName] = {
+                    name: fileName,
+                    data: fileData,
+                    savedAt: new Date().toISOString()
+                };
+                localStorage.setItem(key, JSON.stringify(files));
+            }
 
-        // Logout handler
-        document.getElementById('logoutBtn').addEventListener('click', async () => {
-            await auth.signOut();
+            getFile(email, fileName) {
+                const key = this.getUserFilesKey(email);
+                const files = JSON.parse(localStorage.getItem(key) || '{}');
+                return files[fileName] || null;
+            }
+
+            getUserFiles(email) {
+                const key = this.getUserFilesKey(email);
+                const files = JSON.parse(localStorage.getItem(key) || '{}');
+                return Object.values(files);
+            }
+
+            deleteFile(email, fileName) {
+                const key = this.getUserFilesKey(email);
+                const files = JSON.parse(localStorage.getItem(key) || '{}');
+                delete files[fileName];
+                localStorage.setItem(key, JSON.stringify(files));
+            }
+        }
+
+        const auth = new AuthManager();
+        const currentUser = auth.getCurrentUser();
+
+        // Redirect if not logged in
+        if (!currentUser) {
             window.location.href = 'index.html';
+        }
+
+        // Set up page
+        document.getElementById('userName').textContent = `Welcome, ${currentUser.name}!`;
+        document.getElementById('logoutBtn').addEventListener('click', () => {
+            auth.logout();
         });
 
         // File handling
@@ -526,17 +545,17 @@
             handleFileSelect();
         });
 
-        async function handleFileSelect() {
+        function handleFileSelect() {
             const file = fileInput.files[0];
             
-            if (!file || !currentUser) return;
+            if (!file) return;
 
             hideMessages();
 
             try {
                 const reader = new FileReader();
                 
-                reader.onload = async (e) => {
+                reader.onload = (e) => {
                     try {
                         const data = e.target.result;
                         const workbook = XLSX.read(data, { type: 'array' });
@@ -557,12 +576,9 @@
 
                         displayData(jsonData, file.name);
                         
-                        // Save file to Firestore
-                        await db.collection('users').doc(currentUser.uid).collection('files').doc(file.name).set({
-                            name: file.name,
-                            data: jsonData,
-                            savedAt: new Date().toISOString()
-                        });
+                        // Save file to user's storage
+                        const fileDataStr = JSON.stringify(jsonData);
+                        auth.saveFile(currentUser.email, file.name, fileDataStr);
                         
                         showSuccess(`Successfully loaded and saved "${file.name}"`);
                         fileInput.value = '';
@@ -628,15 +644,8 @@
             tableContainer.classList.add('show');
         }
 
-        async function loadSavedFiles() {
-            if (!currentUser) return;
-
-            const snapshot = await db.collection('users').doc(currentUser.uid).collection('files').orderBy('savedAt', 'desc').get();
-            const files = [];
-
-            snapshot.forEach(doc => {
-                files.push(doc.data());
-            });
+        function loadSavedFiles() {
+            const files = auth.getUserFiles(currentUser.email);
             
             if (files.length === 0) {
                 savedFilesSection.style.display = 'none';
@@ -668,24 +677,20 @@
             savedFilesSection.style.display = 'block';
         }
 
-        async function loadFile(fname) {
-            if (!currentUser) return;
-
-            const doc = await db.collection('users').doc(currentUser.uid).collection('files').doc(fname).get();
-            if (doc.exists) {
-                const file = doc.data();
-                displayData(file.data, fname);
+        function loadFile(fname) {
+            const file = auth.getFile(currentUser.email, fname);
+            if (file) {
+                const data = JSON.parse(file.data);
+                displayData(data, fname);
                 fileName.textContent = fname;
                 fileInfo.classList.add('show');
                 showSuccess(`Loaded "${fname}"`);
             }
         }
 
-        async function deleteFile(fname) {
-            if (!currentUser) return;
-
+        function deleteFile(fname) {
             if (confirm(`Delete "${fname}"?`)) {
-                await db.collection('users').doc(currentUser.uid).collection('files').doc(fname).delete();
+                auth.deleteFile(currentUser.email, fname);
                 loadSavedFiles();
                 showSuccess(`Deleted "${fname}"`);
                 tableContainer.classList.remove('show');
@@ -709,6 +714,9 @@
             errorMessage.classList.remove('show');
             successMessage.classList.remove('show');
         }
+
+        // Load saved files on page load
+        loadSavedFiles();
     </script>
 </body>
 </html>

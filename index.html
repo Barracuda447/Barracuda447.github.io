@@ -4,10 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Inventory Baseline - Sign In</title>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.5.0/firebase-firestore.js"></script>
     <style>
         * {
             margin: 0;
@@ -167,13 +163,12 @@
             }
         }
     </style>
-    </style>
 </head>
 <body>
     <div class="container">
         <div class="logo">
             <h1>📊 Inventory Baseline</h1>
-            <p>Manage your inventory anywhere</p>
+            <p>Manage your inventory</p>
         </div>
 
         <div id="errorMessage" class="error"></div>
@@ -225,28 +220,83 @@
     </div>
 
     <script>
-        // Initialize Firebase - You need to update these with your Firebase config
-        // Get these values from: https://console.firebase.google.com/
-        const firebaseConfig = {
-            apiKey: "AIzaSyBHVZs4xR4n1ZZmVxYZ5E1qZ5E1qZ5E1qZ",
-            authDomain: "inventory-baseline.firebaseapp.com",
-            projectId: "inventory-baseline",
-            storageBucket: "inventory-baseline.appspot.com",
-            messagingSenderId: "123456789012",
-            appId: "1:123456789012:web:abc123def456"
-        };
+        // Simple authentication system using localStorage
+        class AuthManager {
+            constructor() {
+                this.usersKey = 'inventory_users';
+                this.currentUserKey = 'inventory_current_user';
+                this.initializeStorage();
+            }
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+            initializeStorage() {
+                if (!localStorage.getItem(this.usersKey)) {
+                    localStorage.setItem(this.usersKey, JSON.stringify({}));
+                }
+            }
+
+            register(name, email, password) {
+                const users = JSON.parse(localStorage.getItem(this.usersKey));
+
+                if (users[email]) {
+                    throw new Error('Email already registered');
+                }
+
+                if (password.length < 6) {
+                    throw new Error('Password must be at least 6 characters');
+                }
+
+                users[email] = {
+                    name,
+                    email,
+                    password: btoa(password),
+                    createdAt: new Date().toISOString()
+                };
+
+                localStorage.setItem(this.usersKey, JSON.stringify(users));
+                return true;
+            }
+
+            login(email, password) {
+                const users = JSON.parse(localStorage.getItem(this.usersKey));
+
+                if (!users[email]) {
+                    throw new Error('Email not found');
+                }
+
+                const user = users[email];
+                if (btoa(password) !== user.password) {
+                    throw new Error('Incorrect password');
+                }
+
+                localStorage.setItem(this.currentUserKey, JSON.stringify({
+                    email: user.email,
+                    name: user.name,
+                    loginTime: new Date().toISOString()
+                }));
+
+                return true;
+            }
+
+            logout() {
+                localStorage.removeItem(this.currentUserKey);
+            }
+
+            getCurrentUser() {
+                const user = localStorage.getItem(this.currentUserKey);
+                return user ? JSON.parse(user) : null;
+            }
+
+            isLoggedIn() {
+                return this.getCurrentUser() !== null;
+            }
+        }
+
+        const auth = new AuthManager();
 
         // Check if already logged in
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                window.location.href = 'dashboard.html';
-            }
-        });
+        if (auth.isLoggedIn()) {
+            window.location.href = 'dashboard.html';
+        }
 
         // Form toggle
         function toggleForms() {
@@ -260,14 +310,12 @@
             const errorEl = document.getElementById('errorMessage');
             errorEl.textContent = message;
             errorEl.classList.add('show');
-            setTimeout(() => errorEl.classList.remove('show'), 5000);
         }
 
         function showSuccess(message) {
             const successEl = document.getElementById('successMessage');
             successEl.textContent = message;
             successEl.classList.add('show');
-            setTimeout(() => successEl.classList.remove('show'), 5000);
         }
 
         function hideMessages() {
@@ -276,24 +324,24 @@
         }
 
         // Sign in handler
-        document.getElementById('signinFormElement').addEventListener('submit', async (e) => {
+        document.getElementById('signinFormElement').addEventListener('submit', (e) => {
             e.preventDefault();
             try {
                 const email = document.getElementById('signinEmail').value;
                 const password = document.getElementById('signinPassword').value;
 
-                const result = await auth.signInWithEmailAndPassword(email, password);
+                auth.login(email, password);
                 showSuccess('Signing in...');
                 setTimeout(() => {
                     window.location.href = 'dashboard.html';
-                }, 1000);
+                }, 500);
             } catch (error) {
                 showError(error.message);
             }
         });
 
         // Sign up handler
-        document.getElementById('signupFormElement').addEventListener('submit', async (e) => {
+        document.getElementById('signupFormElement').addEventListener('submit', (e) => {
             e.preventDefault();
             try {
                 const name = document.getElementById('signupName').value;
@@ -305,25 +353,13 @@
                     throw new Error('Passwords do not match');
                 }
 
-                if (password.length < 6) {
-                    throw new Error('Password must be at least 6 characters');
-                }
-
-                // Create user account
-                const result = await auth.createUserWithEmailAndPassword(email, password);
-                
-                // Store user profile in Firestore
-                await db.collection('users').doc(result.user.uid).set({
-                    name: name,
-                    email: email,
-                    createdAt: new Date().toISOString()
-                });
-
+                auth.register(name, email, password);
                 showSuccess('Account created! Signing in...');
                 
                 setTimeout(() => {
+                    auth.login(email, password);
                     window.location.href = 'dashboard.html';
-                }, 1500);
+                }, 500);
             } catch (error) {
                 showError(error.message);
             }
