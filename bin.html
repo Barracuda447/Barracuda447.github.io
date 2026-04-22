@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Enter Bin</title>
+</head>
+<body>
+
+  <h2 id="warehouse-title"></h2>
+
+  <p>Enter the bin location to count:</p>
+
+  <input type="text" id="binInput" placeholder="e.g. A1-01">
+  <br><br>
+
+  <button onclick="beginCount()">Begin Count</button>
+
+  <script>
+    // Get warehouse from URL
+    const params = new URLSearchParams(window.location.search);
+    const warehouse = params.get("warehouse");
+
+    // Display it
+    document.getElementById("warehouse-title").innerText =
+      "Warehouse: " + warehouse;
+
+    function beginCount() {
+      const bin = document.getElementById("binInput").value;
+      alert("Warehouse: " + warehouse + "\nBin: " + bin);
+      // We'll use both values later
+    }
+  </script>
+
+</body>
+</html>

@@ -8,10 +8,14 @@
 
   <h2>For which warehouse?</h2>
 
-  <button onclick="selectWarehouse('AB')">AB</button>
-  <button onclick="selectWarehouse('ON')">ON</button>
+    <button onclick="selectWarehouse('AB')">AB</button>
+    <button onclick="selectWarehouse('ON')">ON</button>
 
-  <script>
+    <script>
+    function selectWarehouse(warehouse) {
+        window.location.href = "bin.html?warehouse=" + warehouse;
+    }
+    </script>
     function selectWarehouse(warehouse) {
       alert("Selected warehouse: " + warehouse);
       // We'll use this value later for file naming
