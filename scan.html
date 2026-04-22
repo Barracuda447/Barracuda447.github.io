@@ -48,7 +48,7 @@
     let scanning = false;
 
     // =========================
-    // 🔊 AUDIO (FORCED WARMUP)
+    // AUDIO
     // =========================
     let audioCtx = null;
     let audioUnlocked = false;
@@ -111,9 +111,7 @@
     // SESSION START
     // =========================
     function startSession() {
-      initAudioHard().then(() => {
-        triggerScan();
-      });
+      initAudioHard().then(triggerScan);
     }
 
     // =========================
@@ -127,9 +125,7 @@
 
       handleScan(latestFrame);
 
-      setTimeout(() => {
-        scanning = false;
-      }, 300);
+      setTimeout(() => scanning = false, 300);
     }
 
     // =========================
@@ -143,7 +139,7 @@
     });
 
     // =========================
-    // 🔥 GS1-128 SAFE PARSER (UPDATED)
+    // GS1 PARSER (FIXED)
     // =========================
     function parseBarcode(text) {
       let lot = "";
@@ -151,21 +147,14 @@
 
       if (!text) return { lot, exp };
 
-      // normalize GS1 control characters
       const clean = text
-        .replace(/\u001d/g, "")   // GS1 FNC1 separator
+        .replace(/\u001d/g, "")
         .replace(/\s/g, "")
         .trim();
 
-      // =========================
-      // CASE 1: formatted (10)(17)
-      // =========================
       let lotMatch = clean.match(/\(10\)([^\(]+)/);
       let expMatch = clean.match(/\(17\)(\d{6})/);
 
-      // =========================
-      // CASE 2: raw GS1-128 (no brackets)
-      // =========================
       if (!lotMatch) {
         lotMatch = clean.match(/10([A-Za-z0-9\-]{1,20})17/);
       }
@@ -174,9 +163,6 @@
         expMatch = clean.match(/17(\d{6})/);
       }
 
-      // =========================
-      // CASE 3: fallback split logic
-      // =========================
       if (!lotMatch && clean.includes("10") && clean.includes("17")) {
         const split = clean.split("17");
         if (split[0].includes("10")) {
@@ -196,15 +182,11 @@
     function formatDate(raw) {
       if (!raw || raw.length !== 6) return "";
 
-      const yy = raw.substring(0, 2);
-      const mm = raw.substring(2, 4);
-      const dd = raw.substring(4, 6);
-
-      return `20${yy}-${mm}-${dd}`;
+      return `20${raw.slice(0,2)}-${raw.slice(2,4)}-${raw.slice(4,6)}`;
     }
 
     // =========================
-    // HANDLE SCAN
+    // HANDLE SCAN (MULTI-LOT SAFE)
     // =========================
     function handleScan(text) {
       const { lot, exp } = parseBarcode(text);
@@ -213,6 +195,8 @@
       let session = JSON.parse(sessionStorage.getItem(key)) || [];
 
       const existing = session.find(x =>
+        x.warehouse === warehouse &&
+        x.bin === bin &&
         x.sku === sku &&
         x.lot === lot &&
         x.exp === exp

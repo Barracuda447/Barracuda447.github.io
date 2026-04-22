@@ -63,11 +63,11 @@
     const sessionKey = "scanSession";
     const countKey = "cycleCountData";
 
-    const tbody = document.getElementById("tableBody");
-    const emptyMsg = document.getElementById("emptyMsg");
-
     function load() {
       const data = JSON.parse(sessionStorage.getItem(sessionKey)) || [];
+
+      const tbody = document.getElementById("tableBody");
+      const emptyMsg = document.getElementById("emptyMsg");
 
       tbody.innerHTML = "";
 
@@ -101,8 +101,8 @@
         return;
       }
 
-      // 🔥 MERGE session → cycleCountData
       sessionData.forEach(item => {
+
         const match = existing.find(x =>
           x.warehouse === item.warehouse &&
           x.bin === item.bin &&
@@ -127,7 +127,6 @@
 
       localStorage.setItem(countKey, JSON.stringify(existing));
 
-      // clear session after transfer
       sessionStorage.removeItem(sessionKey);
 
       window.location.href =
