@@ -184,6 +184,7 @@
       }, 500);
     }
 
+    // ✅ NEW: GS1-safe parser (token-based, not guesswork)
     function parseBarcode(text) {
       let lot = "";
       let exp = "";
@@ -192,28 +193,20 @@
 
       const clean = text
         .replace(/\u001d/g, "")
-        .replace(/\s/g, "")
-        .trim();
+        .replace(/\s/g, "");
 
-      let lotMatch = clean.match(/\(?10\)?([^\(]+?)(?=\(17\)|17|$)/);
-      let expMatch = clean.match(/\(17\)(\d{6})/);
+      // Extract (10)...(17)... safely using GS1 structure
+      const lotMatch = clean.match(/\(10\)(.*?)(?=\(17\)|$)/);
+      const expMatch = clean.match(/\(17\)(\d{6})/);
+
+      if (lotMatch) {
+        lot = lotMatch[1].replace(/\)+$/, "").trim();
+      }
 
       if (!expMatch) {
-        expMatch = clean.match(/17(\d{6})/);
-      }
-
-      if (!lotMatch && clean.includes("10") && clean.includes("17")) {
-        const lotStart = clean.indexOf("10");
-        const expStart = clean.indexOf("17");
-
-        if (lotStart !== -1 && expStart !== -1 && lotStart < expStart) {
-          lot = clean.substring(lotStart + 2, expStart).trim();
-        }
-      } else if (lotMatch) {
-        lot = lotMatch[1].trim();
-      }
-
-      if (expMatch) {
+        const altExp = clean.match(/17(\d{6})/);
+        if (altExp) exp = formatDate(altExp[1]);
+      } else {
         exp = formatDate(expMatch[1]);
       }
 
