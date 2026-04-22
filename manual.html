@@ -2,37 +2,143 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Manual Entry</title>
+
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171a21;
+      --text: #e6e6e6;
+      --muted: #9aa4b2;
+      --accent: #4f8cff;
+      --danger: #ff4d4d;
+      --border: #2a2f3a;
+      --success: #2ecc71;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 480px;
+    }
+
+    h2 {
+      text-align: center;
+      margin: 10px 0 8px;
+      font-size: 22px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    #info {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+      text-align: center;
+    }
+
+    label {
+      font-size: 13px;
+      color: var(--muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      margin-bottom: 14px;
+      font-size: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #0f131a;
+      color: var(--text);
+      box-sizing: border-box;
+      outline: none;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      margin-top: 10px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      background: var(--success);
+      color: white;
+    }
+
+    .btn.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .section {
+      margin-bottom: 10px;
+    }
+  </style>
 </head>
+
 <body>
 
-  <h2>Manual Entry</h2>
+  <div class="container">
 
-  <p id="info"></p>
+    <h2>Manual Entry</h2>
 
-  <div id="lotSection">
-    <label>LOT:</label>
-    <input type="text" id="lotInput">
+    <div class="card">
+
+      <p id="info"></p>
+
+      <div id="lotSection" class="section">
+        <label>LOT:</label>
+        <input type="text" id="lotInput">
+      </div>
+
+      <div id="expirySection" class="section">
+        <label>Expiration Date:</label>
+        <input type="date" id="expiryInput">
+      </div>
+
+      <div class="section">
+        <label>On Hand Quantity:</label>
+        <input type="number" id="qtyInput" min="0">
+      </div>
+
+      <button class="btn primary" onclick="save()">Save Item</button>
+      <button class="btn secondary" onclick="cancel()">Cancel</button>
+
+    </div>
+
   </div>
-
-  <br>
-
-  <div id="expirySection">
-    <label>Expiration Date:</label>
-    <input type="date" id="expiryInput">
-  </div>
-
-  <br>
-
-  <div>
-    <label>On Hand Quantity:</label>
-    <input type="number" id="qtyInput" min="0">
-  </div>
-
-  <br>
-
-  <button onclick="save()">Save Item</button>
-  <button onclick="cancel()">Cancel</button>
 
   <script>
     const params = new URLSearchParams(window.location.search);

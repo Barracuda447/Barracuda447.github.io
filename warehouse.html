@@ -2,18 +2,96 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Select Warehouse</title>
+
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171a21;
+      --text: #e6e6e6;
+      --muted: #9aa4b2;
+      --accent: #4f8cff;
+      --danger: #ff4d4d;
+      --border: #2a2f3a;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 18px;
+      font-size: 22px;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 16px;
+      margin: 10px 0;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 18px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      border: none;
+      color: white;
+    }
+
+    .btn.cancel {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+      margin-top: 18px;
+      font-size: 16px;
+    }
+
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+  </style>
 </head>
+
 <body>
 
-  <h2>For which warehouse?</h2>
+  <div class="container">
 
-  <button onclick="selectWarehouse('AB')">AB</button>
-  <button onclick="selectWarehouse('ON')">ON</button>
+    <h2>For which warehouse?</h2>
+    <div class="hint">Select a location to continue</div>
 
-  <br><br>
+    <button class="btn primary" onclick="selectWarehouse('AB')">AB</button>
+    <button class="btn primary" onclick="selectWarehouse('ON')">ON</button>
 
-  <button onclick="goBack()">Cancel</button>
+    <button class="btn cancel" onclick="goBack()">Cancel</button>
+
+  </div>
 
   <script>
     function selectWarehouse(warehouse) {

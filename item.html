@@ -2,18 +2,116 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Enter Item</title>
+
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171a21;
+      --text: #e6e6e6;
+      --muted: #9aa4b2;
+      --accent: #4f8cff;
+      --border: #2a2f3a;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 16px;
+      font-size: 22px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #0f131a;
+      color: var(--text);
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+  </style>
 </head>
+
 <body>
 
-  <h2>Enter SKU</h2>
+  <div class="container">
 
-  <input type="text" id="skuInput" placeholder="Enter SKU">
+    <h2>Enter SKU</h2>
+    <div class="hint">Scan or type the item code</div>
 
-  <br><br>
+    <div class="card">
 
-  <button onclick="goToDetails()">Add Details</button>
-  <button onclick="goBack()">Back</button>
+      <input type="text" id="skuInput" placeholder="Enter SKU">
+
+      <button class="btn primary" onclick="goToDetails()">Add Details</button>
+      <button class="btn secondary" onclick="goBack()">Back</button>
+
+    </div>
+
+  </div>
 
   <script>
     const params = new URLSearchParams(window.location.search);

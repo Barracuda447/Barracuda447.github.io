@@ -2,26 +2,134 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Enter Bin</title>
+
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171a21;
+      --text: #e6e6e6;
+      --muted: #9aa4b2;
+      --accent: #4f8cff;
+      --border: #2a2f3a;
+      --danger: #ff4d4d;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 8px;
+      font-size: 22px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 18px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+    }
+
+    input {
+      width: 100%;
+      padding: 14px;
+      font-size: 16px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #0f131a;
+      color: var(--text);
+      outline: none;
+      box-sizing: border-box;
+    }
+
+    input:focus {
+      border-color: var(--accent);
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn.secondary {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    .warehouse {
+      font-size: 16px;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+  </style>
 </head>
+
 <body>
 
-  <h2 id="warehouse-title"></h2>
+  <div class="container">
 
-  <p>Enter the bin location to count:</p>
+    <h2 id="warehouse-title"></h2>
+    <div class="subtitle">Enter the bin location to count</div>
 
-  <input type="text" id="binInput" placeholder="e.g. A1-01">
+    <div class="card">
 
-  <br><br>
+      <div class="warehouse" id="warehouse-label"></div>
 
-  <button onclick="beginCount()">Begin Count</button>
-  <button onclick="goBack()">Back</button>
+      <input type="text" id="binInput" placeholder="e.g. A1-01">
+
+      <button class="btn primary" onclick="beginCount()">Begin Count</button>
+      <button class="btn secondary" onclick="goBack()">Back</button>
+
+    </div>
+
+  </div>
 
   <script>
     const params = new URLSearchParams(window.location.search);
     const warehouse = params.get("warehouse");
 
     document.getElementById("warehouse-title").innerText =
+      "Enter Bin";
+
+    document.getElementById("warehouse-label").innerText =
       "Warehouse: " + warehouse;
 
     function beginCount() {

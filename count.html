@@ -2,64 +2,149 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cycle Count</title>
 
   <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171a21;
+      --text: #e6e6e6;
+      --muted: #9aa4b2;
+      --accent: #4f8cff;
+      --success: #2ecc71;
+      --border: #2a2f3a;
+    }
+
     body {
-      font-family: Arial;
-      margin: 20px;
-      padding-bottom: 100px;
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--text);
+      padding: 14px;
+      padding-bottom: 120px; /* space for fixed buttons */
+    }
+
+    h2 {
+      text-align: center;
+      margin: 10px 0 14px;
+      font-size: 18px;
+      color: var(--text);
+    }
+
+    .table-wrap {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow-x: auto;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
+      min-width: 600px;
     }
 
     th, td {
-      border: 1px solid #ccc;
-      padding: 8px;
+      border-bottom: 1px solid var(--border);
+      padding: 10px 8px;
+      font-size: 14px;
+      text-align: left;
+      white-space: nowrap;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+    }
+
+    tr:hover {
+      background: rgba(255,255,255,0.03);
+    }
+
+    /* Bottom action buttons */
+    #addItemBtn, #completeBtn {
+      position: fixed;
+      left: 0;
+      width: 100%;
+      padding: 16px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      color: white;
     }
 
     #addItemBtn {
-      position: fixed;
-      bottom: 50px;
-      left: 0;
-      width: 100%;
-      padding: 15px;
-      background: #007BFF;
-      color: white;
-      border: none;
+      bottom: 56px;
+      background: var(--accent);
     }
 
     #completeBtn {
-      position: fixed;
       bottom: 0;
-      left: 0;
-      width: 100%;
-      padding: 15px;
-      background: green;
-      color: white;
-      border: none;
+      background: var(--success);
     }
-  </style>
 
+    #addItemBtn:active,
+    #completeBtn:active {
+      transform: scale(0.99);
+    }
+
+    /* Mobile card mode (visual only, no JS changes) */
+    @media (max-width: 700px) {
+      table {
+        min-width: 100%;
+      }
+
+      th {
+        display: none;
+      }
+
+      tr {
+        display: block;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 10px;
+        padding: 10px;
+      }
+
+      td {
+        display: flex;
+        justify-content: space-between;
+        border: none;
+        padding: 8px 6px;
+      }
+
+      td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+    }
+
+  </style>
 </head>
+
 <body>
 
   <h2 id="header"></h2>
 
-  <table>
-    <thead>
-      <tr>
-        <th>Item</th>
-        <th>LOT</th>
-        <th>Expiration Date</th>
-        <th>On Hand</th>
-      </tr>
-    </thead>
-    <tbody id="tableBody"></tbody>
-  </table>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Item</th>
+          <th>LOT</th>
+          <th>Expiration Date</th>
+          <th>On Hand</th>
+        </tr>
+      </thead>
+
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
 
   <button id="addItemBtn" onclick="goToAddItem()">Add Item</button>
   <button id="completeBtn" onclick="completeCount()">Complete Count</button>
@@ -79,7 +164,6 @@
 
       let filtered = data;
 
-      // 🔥 ONLY filter if BOTH values exist
       if (warehouse && bin) {
         filtered = data.filter(item =>
           item.warehouse === warehouse &&
@@ -94,10 +178,10 @@
         const row = document.createElement("tr");
 
         row.innerHTML = `
-          <td>${item.sku}</td>
-          <td>${item.lot || ""}</td>
-          <td>${item.expiry || ""}</td>
-          <td>${item.qty}</td>
+          <td data-label="Item">${item.sku}</td>
+          <td data-label="LOT">${item.lot || ""}</td>
+          <td data-label="Expiry">${item.expiry || ""}</td>
+          <td data-label="On Hand">${item.qty}</td>
         `;
 
         tbody.appendChild(row);

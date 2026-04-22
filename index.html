@@ -2,54 +2,242 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Cycle Count</title>
+
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171a21;
+      --text: #e6e6e6;
+      --muted: #9aa4b2;
+      --accent: #4f8cff;
+      --border: #2a2f3a;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--text);
+      padding: 14px;
+    }
+
+    h2 {
+      text-align: center;
+      margin: 10px 0 14px;
+    }
+
+    .table-container {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      padding: 12px 10px;
+      border-bottom: 1px solid var(--border);
+      font-size: 14px;
+      text-align: left;
+    }
+
+    th {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    tr:hover {
+      background: rgba(255,255,255,0.03);
+    }
+
+    /* Pagination */
+    .pagination {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    .page-btn {
+      flex: 1;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      font-size: 14px;
+    }
+
+    .page-btn:disabled {
+      opacity: 0.4;
+    }
+
+    .page-info {
+      text-align: center;
+      margin-top: 8px;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    .btn {
+      width: 100%;
+      margin-top: 14px;
+      padding: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 12px;
+    }
+
+    .btn:active {
+      transform: scale(0.98);
+    }
+
+    /* =========================
+       MOBILE CARD MODE
+    ========================= */
+    @media (max-width: 700px) {
+
+      table, thead {
+        display: none;
+      }
+
+      tbody {
+        display: block;
+      }
+
+      tr {
+        display: block;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        margin-bottom: 10px;
+        padding: 10px;
+      }
+
+      td {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 6px;
+        border: none;
+        font-size: 14px;
+      }
+
+      td::before {
+        content: attr(data-label);
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+    }
+
+  </style>
 </head>
+
 <body>
 
   <h2>Cycle Count</h2>
 
-  <table border="1">
-    <tr>
-      <th>Warehouse</th>
-      <th>Bin</th>
-      <th>Item</th>
-      <th>LOT</th>
-      <th>Expiration Date</th>
-      <th>On Hand</th>
-    </tr>
-    <tbody id="mainTableBody"></tbody>
-  </table>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Warehouse</th>
+          <th>Bin</th>
+          <th>Item</th>
+          <th>LOT</th>
+          <th>Expiration Date</th>
+          <th>On Hand</th>
+        </tr>
+      </thead>
 
-  <br>
+      <tbody id="mainTableBody"></tbody>
+    </table>
+  </div>
 
-  <button onclick="goToWarehouse()">Create New Count</button>
+  <div class="pagination">
+    <button class="page-btn" onclick="prevPage()" id="prevBtn">Previous</button>
+    <button class="page-btn" onclick="nextPage()" id="nextBtn">Next</button>
+  </div>
+
+  <div class="page-info" id="pageInfo"></div>
+
+  <button class="btn" onclick="goToWarehouse()">Create New Count</button>
 
   <script>
+    let allData = [];
+    let currentPage = 1;
+    const rowsPerPage = 10;
+
     function goToWarehouse() {
       window.location.href = "warehouse.html";
     }
 
     function loadCompleted() {
       const key = "completedCounts";
-      const data = JSON.parse(localStorage.getItem(key)) || [];
+      allData = JSON.parse(localStorage.getItem(key)) || [];
+      currentPage = 1;
+      renderTable();
+    }
 
+    function renderTable() {
       const tbody = document.getElementById("mainTableBody");
       tbody.innerHTML = "";
 
-      data.forEach(item => {
+      const start = (currentPage - 1) * rowsPerPage;
+      const end = start + rowsPerPage;
+      const pageData = allData.slice(start, end);
+
+      pageData.forEach(item => {
         const row = document.createElement("tr");
 
         row.innerHTML = `
-          <td>${item.warehouse}</td>
-          <td>${item.bin}</td>
-          <td>${item.sku}</td>
-          <td>${item.lot}</td>
-          <td>${item.expiry}</td>
-          <td>${item.qty}</td>
+          <td data-label="Warehouse">${item.warehouse}</td>
+          <td data-label="Bin">${item.bin}</td>
+          <td data-label="Item">${item.sku}</td>
+          <td data-label="LOT">${item.lot}</td>
+          <td data-label="Expiry">${item.expiry}</td>
+          <td data-label="On Hand">${item.qty}</td>
         `;
 
         tbody.appendChild(row);
       });
+
+      updatePaginationUI();
+    }
+
+    function updatePaginationUI() {
+      const totalPages = Math.max(1, Math.ceil(allData.length / rowsPerPage));
+
+      document.getElementById("pageInfo").innerText =
+        `Page ${currentPage} of ${totalPages}`;
+
+      document.getElementById("prevBtn").disabled = currentPage === 1;
+      document.getElementById("nextBtn").disabled = currentPage === totalPages;
+    }
+
+    function nextPage() {
+      const totalPages = Math.ceil(allData.length / rowsPerPage);
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderTable();
+      }
+    }
+
+    function prevPage() {
+      if (currentPage > 1) {
+        currentPage--;
+        renderTable();
+      }
     }
 
     loadCompleted();

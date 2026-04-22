@@ -2,21 +2,118 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Item Setup</title>
+
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171a21;
+      --text: #e6e6e6;
+      --muted: #9aa4b2;
+      --accent: #4f8cff;
+      --danger: #ff4d4d;
+      --border: #2a2f3a;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 420px;
+      text-align: center;
+    }
+
+    h2 {
+      margin-bottom: 16px;
+      font-size: 22px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+    }
+
+    #questions p {
+      font-size: 16px;
+      margin-bottom: 14px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 10px;
+      border-radius: 12px;
+      border: none;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.15s ease;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    /* Yes/No buttons */
+    #questions button {
+      background: var(--accent);
+      color: white;
+    }
+
+    #questions button:nth-child(even) {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    .cancel {
+      margin-top: 14px;
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+
+    .hint {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+  </style>
 </head>
+
 <body>
 
-  <h2>Item Setup</h2>
+  <div class="container">
 
-  <div id="questions">
-    <p>Does this item have a barcode?</p>
-    <button onclick="setBarcode(true)">Yes</button>
-    <button onclick="setBarcode(false)">No</button>
+    <h2>Item Setup</h2>
+    <div class="hint">Answer a few quick questions</div>
+
+    <div class="card">
+
+      <div id="questions">
+        <p>Does this item have a barcode?</p>
+        <button onclick="setBarcode(true)">Yes</button>
+        <button onclick="setBarcode(false)">No</button>
+      </div>
+
+      <button class="cancel" onclick="goBack()">Cancel</button>
+
+    </div>
+
   </div>
-
-  <br>
-
-  <button onclick="goBack()">Cancel</button>
 
   <script>
     const params = new URLSearchParams(window.location.search);
@@ -29,9 +126,6 @@
     let hasLot = false;
     let hasExp = false;
 
-    // =========================
-    // STEP 1: BARCODE CHECK
-    // =========================
     function setBarcode(answer) {
       hasBarcode = answer;
 
@@ -43,9 +137,6 @@
       showLotQuestion();
     }
 
-    // =========================
-    // STEP 2: LOT
-    // =========================
     function showLotQuestion() {
       document.getElementById("questions").innerHTML = `
         <p>Does this item have a LOT number?</p>
@@ -56,13 +147,9 @@
 
     function setLot(answer) {
       hasLot = answer;
-
       showExpQuestion();
     }
 
-    // =========================
-    // STEP 3: EXP
-    // =========================
     function showExpQuestion() {
       document.getElementById("questions").innerHTML = `
         <p>Does this item have an expiration date?</p>
@@ -73,13 +160,9 @@
 
     function setExp(answer) {
       hasExp = answer;
-
       goManual();
     }
 
-    // =========================
-    // NAVIGATION
-    // =========================
     function goScan() {
       window.location.href =
         "scan.html?warehouse=" + encodeURIComponent(warehouse) +

@@ -2,45 +2,118 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Scan Item</title>
 
   <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171a21;
+      --text: #e6e6e6;
+      --muted: #9aa4b2;
+      --accent: #4f8cff;
+      --border: #2a2f3a;
+      --success: #2ecc71;
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+      padding: 14px;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 520px;
+      text-align: center;
+    }
+
+    h2 {
+      margin: 10px 0 12px;
+      font-size: 22px;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 14px;
+    }
+
     video {
       width: 100%;
-      max-width: 500px;
-      border: 1px solid #ccc;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: black;
     }
 
     .hint {
       margin-top: 10px;
-      font-size: 14px;
-      color: #555;
+      font-size: 13px;
+      color: var(--muted);
     }
 
     button {
-      padding: 12px;
-      margin-top: 10px;
       width: 100%;
-      background: #007BFF;
-      color: white;
+      padding: 14px;
+      margin-top: 10px;
+      border-radius: 12px;
       border: none;
       font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .scan-btn {
+      background: var(--accent);
+      color: white;
+    }
+
+    .results-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .status {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 8px;
     }
   </style>
 </head>
+
 <body>
 
-  <h2>Scan Item</h2>
+  <div class="container">
 
-  <video id="video" autoplay></video>
+    <h2>Scan Item</h2>
 
-  <button onclick="scanNow()">SCAN</button>
+    <div class="card">
 
-  <p class="hint">
-    Tap SCAN to capture barcode from camera
-  </p>
+      <video id="video" autoplay></video>
 
-  <button onclick="goToResults()">View Results</button>
+      <button class="scan-btn" onclick="scanNow()">SCAN</button>
+
+      <p class="hint">
+        Tap SCAN to capture barcode from camera
+      </p>
+
+      <div class="status">Camera active • Waiting for barcode</div>
+
+      <button class="results-btn" onclick="goToResults()">View Results</button>
+
+    </div>
+
+  </div>
 
   <script src="https://unpkg.com/@zxing/library@latest"></script>
 
@@ -55,9 +128,6 @@
     let latestFrame = null;
     let scanning = false;
 
-    // =========================
-    // AUDIO
-    // =========================
     let audioCtx;
     let audioReady = false;
 
@@ -87,9 +157,6 @@
       osc.stop(audioCtx.currentTime + 0.1);
     }
 
-    // =========================
-    // CAMERA
-    // =========================
     function startCamera() {
       codeReader = new ZXing.BrowserMultiFormatReader();
 
@@ -102,9 +169,6 @@
 
     startCamera();
 
-    // =========================
-    // SCAN BUTTON ONLY
-    // =========================
     function scanNow() {
       if (scanning) return;
       if (!latestFrame) return;
@@ -120,9 +184,6 @@
       }, 500);
     }
 
-    // =========================
-    // GS1 PARSER (SAFE)
-    // =========================
     function parseBarcode(text) {
       let lot = "";
       let exp = "";
@@ -166,9 +227,6 @@
       return `20${raw.slice(0,2)}-${raw.slice(2,4)}-${raw.slice(4,6)}`;
     }
 
-    // =========================
-    // HANDLE SCAN (MERGE LOGIC)
-    // =========================
     function handleScan(text) {
       const { lot, exp } = parseBarcode(text);
 
