@@ -14,10 +14,6 @@
     <input type="text" id="sku" name="sku">
     <br><br>
 
-    <label for="scan">Scan Barcode:</label>
-    <input type="text" id="scan" name="scan" autofocus>
-    <br><br>
-
     <label for="lot">LOT:</label>
     <input type="text" id="lot" name="lot">
     <br><br>
@@ -33,60 +29,79 @@
     <button type="submit">Submit</button>
 
     <script>
-        const scanInput = document.getElementById('scan');
         const lotInput = document.getElementById('lot');
         const expirationInput = document.getElementById('expiration');
+        const quantityInput = document.getElementById('quantity');
 
-        scanInput.addEventListener('keydown', function(event) {
+        let buffer = '';
+        let lastKeyTime = Date.now();
+
+        document.addEventListener('keydown', function(event) {
+            const now = Date.now();
+
+            // If typing is slow, reset buffer (human typing)
+            if (now - lastKeyTime > 100) {
+                buffer = '';
+            }
+
+            lastKeyTime = now;
+
             if (event.key === 'Enter') {
-                const data = scanInput.value.trim();
+                processScan(buffer.trim());
+                buffer = '';
+                return;
+            }
 
-                console.log("Scan:", data);
-                console.log("Char codes:", [...data].map(c => c.charCodeAt(0)));
-
-                // --- Extract EXP (AI 17 = YYMMDD) ---
-                const expMatch = data.match(/17(\d{6})/);
-                if (expMatch) {
-                    const raw = expMatch[1];
-                    const year = '20' + raw.slice(0, 2);
-                    const month = raw.slice(2, 4);
-                    const day = raw.slice(4, 6);
-                    expirationInput.value = `${year}-${month}-${day}`;
-                }
-
-                // --- Extract LOT (AI 10, variable length) ---
-                // Stops at GS (ASCII 29) OR next AI like 17
-                let lot = '';
-
-                const gsIndex = data.indexOf(String.fromCharCode(29));
-                const lotStart = data.indexOf('10');
-
-                if (lotStart !== -1) {
-                    let lotEnd = data.length;
-
-                    if (gsIndex !== -1 && gsIndex > lotStart) {
-                        lotEnd = gsIndex;
-                    } else {
-                        const nextAI = data.slice(lotStart + 2).match(/(17|01|21)/);
-                        if (nextAI) {
-                            lotEnd = lotStart + 2 + nextAI.index;
-                        }
-                    }
-
-                    lot = data.slice(lotStart + 2, lotEnd);
-                }
-
-                if (lot) {
-                    lotInput.value = lot;
-                }
-
-                // Clear scan box for next scan
-                scanInput.value = '';
-
-                // Move to quantity for fast workflow
-                document.getElementById('quantity').focus();
+            // Ignore modifier keys
+            if (event.key.length === 1) {
+                buffer += event.key;
             }
         });
+
+        function processScan(data) {
+            console.log("Scanned:", data);
+            console.log("Char codes:", [...data].map(c => c.charCodeAt(0)));
+
+            // --- EXP (17 = YYMMDD) ---
+            const expMatch = data.match(/17(\d{6})/);
+            if (expMatch) {
+                const raw = expMatch[1];
+                const year = '20' + raw.slice(0, 2);
+                const month = raw.slice(2, 4);
+                const day = raw.slice(4, 6);
+                expirationInput.value = `${year}-${month}-${day}`;
+            }
+
+            // --- LOT (10 variable length) ---
+            let lot = '';
+            const lotStart = data.indexOf('10');
+
+            if (lotStart !== -1) {
+                let lotEnd = data.length;
+
+                // Stop at GS (ASCII 29) if present
+                const gsChar = String.fromCharCode(29);
+                const gsIndex = data.indexOf(gsChar, lotStart);
+                if (gsIndex !== -1) {
+                    lotEnd = gsIndex;
+                } else {
+                    // Otherwise stop at next AI
+                    const nextAI = data.slice(lotStart + 2).match(/(17|01|21)/);
+                    if (nextAI) {
+                        lotEnd = lotStart + 2 + nextAI.index;
+                    }
+                }
+
+                lot = data.slice(lotStart + 2, lotEnd);
+            }
+
+            if (lot) {
+                lotInput.value = lot;
+            }
+
+            // Move to quantity for fast entry
+            quantityInput.focus();
+        }
     </script>
 
 </body>
