@@ -5,13 +5,35 @@
   <title>Scan Results</title>
 
   <style>
+    body {
+      font-family: Arial;
+      margin: 20px;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
+      margin-top: 20px;
     }
-    td, th {
+
+    th, td {
       border: 1px solid #ccc;
       padding: 8px;
+    }
+
+    button {
+      padding: 12px;
+      margin-top: 20px;
+      width: 100%;
+      background: #007BFF;
+      color: white;
+      border: none;
+      font-size: 16px;
+    }
+
+    .empty {
+      margin-top: 20px;
+      color: #666;
     }
   </style>
 </head>
@@ -31,22 +53,30 @@
     <tbody id="tableBody"></tbody>
   </table>
 
-  <br>
+  <p class="empty" id="emptyMsg" style="display:none;">
+    No scanned items found.
+  </p>
 
-  <button onclick="clearSession()">Clear</button>
-  <button onclick="finish()">Finish & Save</button>
+  <button onclick="sendToCount()">Send to Count</button>
 
   <script>
-    const params = new URLSearchParams(window.location.search);
+    const sessionKey = "scanSession";
+    const countKey = "cycleCountData";
 
-    const warehouse = params.get("warehouse") || "";
-    const bin = params.get("bin") || "";
+    const tbody = document.getElementById("tableBody");
+    const emptyMsg = document.getElementById("emptyMsg");
 
     function load() {
-      const data = JSON.parse(sessionStorage.getItem("scanSession")) || [];
-      const tbody = document.getElementById("tableBody");
+      const data = JSON.parse(sessionStorage.getItem(sessionKey)) || [];
 
       tbody.innerHTML = "";
+
+      if (!data.length) {
+        emptyMsg.style.display = "block";
+        return;
+      }
+
+      emptyMsg.style.display = "none";
 
       data.forEach(item => {
         const row = document.createElement("tr");
@@ -62,23 +92,47 @@
       });
     }
 
-    function clearSession() {
-      sessionStorage.removeItem("scanSession");
-      load();
-    }
+    function sendToCount() {
+      const sessionData = JSON.parse(sessionStorage.getItem(sessionKey)) || [];
+      let existing = JSON.parse(localStorage.getItem(countKey)) || [];
 
-    function finish() {
-      const data = JSON.parse(sessionStorage.getItem("scanSession")) || [];
+      if (!sessionData.length) {
+        alert("No scanned items to send.");
+        return;
+      }
 
-      console.log("FINAL SUBMISSION:", data);
+      // 🔥 MERGE session → cycleCountData
+      sessionData.forEach(item => {
+        const match = existing.find(x =>
+          x.warehouse === item.warehouse &&
+          x.bin === item.bin &&
+          x.sku === item.sku &&
+          x.lot === item.lot &&
+          x.expiry === item.exp
+        );
 
-      alert("Saved " + data.length + " scan groups");
+        if (match) {
+          match.qty += item.qty;
+        } else {
+          existing.push({
+            warehouse: item.warehouse,
+            bin: item.bin,
+            sku: item.sku,
+            lot: item.lot,
+            expiry: item.exp,
+            qty: item.qty
+          });
+        }
+      });
 
-      sessionStorage.removeItem("scanSession");
+      localStorage.setItem(countKey, JSON.stringify(existing));
+
+      // clear session after transfer
+      sessionStorage.removeItem(sessionKey);
 
       window.location.href =
-        "count.html?warehouse=" + encodeURIComponent(warehouse) +
-        "&bin=" + encodeURIComponent(bin);
+        "count.html?warehouse=" + encodeURIComponent(sessionData[0].warehouse || "") +
+        "&bin=" + encodeURIComponent(sessionData[0].bin || "");
     }
 
     load();

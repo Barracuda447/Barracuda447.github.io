@@ -10,7 +10,6 @@
 
   <p id="info"></p>
 
-  <!-- LOT -->
   <div id="lotSection">
     <label>LOT:</label>
     <input type="text" id="lotInput">
@@ -18,7 +17,6 @@
 
   <br>
 
-  <!-- EXPIRY -->
   <div id="expirySection">
     <label>Expiration Date:</label>
     <input type="date" id="expiryInput">
@@ -26,7 +24,6 @@
 
   <br>
 
-  <!-- QTY -->
   <div>
     <label>On Hand Quantity:</label>
     <input type="number" id="qtyInput" min="0">
@@ -44,53 +41,48 @@
     const bin = params.get("bin") || "";
     const sku = params.get("sku") || "";
 
-    // ✅ These now come from setup page (no guessing anymore)
     const hasLot = params.get("lot") === "true";
     const hasExp = params.get("exp") === "true";
-
-    const barcode = params.get("barcode");
-    const noBarcode = !barcode || barcode === "null" || barcode === "undefined";
 
     document.getElementById("info").innerText =
       "SKU: " + sku + " | Warehouse: " + warehouse + " | Bin: " + bin;
 
-    const lotSection = document.getElementById("lotSection");
-    const expirySection = document.getElementById("expirySection");
-
-    // =========================
-    // ✅ FINAL DISPLAY RULES
-    // =========================
-
-    const showLot = noBarcode && hasLot;
-    const showExp = noBarcode && hasExp;
-
-    lotSection.style.display = showLot ? "block" : "none";
-    expirySection.style.display = showExp ? "block" : "none";
+    document.getElementById("lotSection").style.display = hasLot ? "block" : "none";
+    document.getElementById("expirySection").style.display = hasExp ? "block" : "none";
 
     function save() {
       const qty = parseInt(document.getElementById("qtyInput").value, 10);
 
       if (!qty || qty <= 0) {
-        alert("Please enter a valid quantity.");
+        alert("Enter valid quantity");
         return;
       }
 
-      const lot = showLot ? document.getElementById("lotInput").value.trim() : "";
-      const expiry = showExp ? document.getElementById("expiryInput").value : "";
+      const lot = hasLot ? document.getElementById("lotInput").value.trim() : "";
+      const expiry = hasExp ? document.getElementById("expiryInput").value : "";
 
       const key = "cycleCountData";
       let data = JSON.parse(localStorage.getItem(key)) || [];
 
       const existing = data.find(item =>
-        item.sku === sku &&
+        item.warehouse === warehouse &&
         item.bin === bin &&
-        item.lot === lot
+        item.sku === sku &&
+        item.lot === lot &&
+        item.expiry === expiry
       );
 
       if (existing) {
         existing.qty += qty;
       } else {
-        data.push({ warehouse, bin, sku, lot, expiry, qty });
+        data.push({
+          warehouse,
+          bin,
+          sku,
+          lot,
+          expiry,
+          qty
+        });
       }
 
       localStorage.setItem(key, JSON.stringify(data));

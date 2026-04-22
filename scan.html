@@ -26,7 +26,7 @@
 
   <br><br>
 
-  <button onclick="triggerScan()">SCAN</button>
+  <button onclick="startSession()">SCAN</button>
 
   <p class="hint">
     Press SPACE or click Scan button (1 scan per trigger)
@@ -48,7 +48,53 @@
     let scanning = false;
 
     // =========================
-    // START CAMERA (NO AUTO SCAN)
+    // 🔊 AUDIO (FORCED WARMUP)
+    // =========================
+    let audioCtx = null;
+    let audioUnlocked = false;
+
+    function initAudioHard() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+
+      return audioCtx.resume().then(() => {
+        // 🔥 CRITICAL: force real sound output on gesture
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+
+        osc.frequency.value = 100;
+        gain.gain.value = 0.01; // almost silent but forces activation
+
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.05);
+
+        audioUnlocked = true;
+      });
+    }
+
+    function beep() {
+      if (!audioCtx || !audioUnlocked) return;
+
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.value = 900;
+      gain.gain.value = 0.08;
+
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+
+      osc.start();
+      osc.stop(audioCtx.currentTime + 0.1);
+    }
+
+    // =========================
+    // CAMERA
     // =========================
     function startCamera() {
       codeReader = new ZXing.BrowserMultiFormatReader();
@@ -63,11 +109,19 @@
     startCamera();
 
     // =========================
-    // MANUAL TRIGGER SCAN
+    // SESSION START (IMPORTANT)
+    // =========================
+    function startSession() {
+      initAudioHard().then(() => {
+        triggerScan();
+      });
+    }
+
+    // =========================
+    // SCAN TRIGGER
     // =========================
     function triggerScan() {
       if (scanning) return;
-
       if (!latestFrame) return;
 
       scanning = true;
@@ -76,16 +130,16 @@
 
       setTimeout(() => {
         scanning = false;
-      }, 300); // tiny debounce
+      }, 300);
     }
 
     // =========================
-    // KEYBOARD SUPPORT
+    // KEYBOARD
     // =========================
     document.addEventListener("keydown", (e) => {
       if (e.code === "Space") {
         e.preventDefault();
-        triggerScan();
+        initAudioHard().then(triggerScan);
       }
     });
 
@@ -95,8 +149,6 @@
     function parseBarcode(text) {
       let lot = "";
       let exp = "";
-
-      if (!text) return { lot, exp };
 
       const clean = text.replace(/\u001d/g, "").trim();
 
@@ -123,7 +175,7 @@
     }
 
     // =========================
-    // HANDLE SCAN (ONE PER PRESS)
+    // HANDLE SCAN
     // =========================
     function handleScan(text) {
       const { lot, exp } = parseBarcode(text);
@@ -152,16 +204,8 @@
 
       sessionStorage.setItem(key, JSON.stringify(session));
 
-      // 🔊 beep
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      osc.frequency.value = 800;
-      osc.connect(ctx.destination);
-      osc.start();
-      setTimeout(() => {
-        osc.stop();
-        ctx.close();
-      }, 100);
+      // 🔊 NOW GUARANTEED
+      beep();
     }
 
     function goToResults() {

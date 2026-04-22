@@ -9,9 +9,9 @@
   <h2>Item Setup</h2>
 
   <div id="questions">
-    <p>Does this item have a LOT number?</p>
-    <button onclick="setLot(true)">Yes</button>
-    <button onclick="setLot(false)">No</button>
+    <p>Does this item have a barcode?</p>
+    <button onclick="setBarcode(true)">Yes</button>
+    <button onclick="setBarcode(false)">No</button>
   </div>
 
   <br>
@@ -25,44 +25,61 @@
     const bin = params.get("bin") || "";
     const sku = params.get("sku") || "";
 
-    let hasLot = null;
-    let hasExpiry = null;
+    let hasBarcode = null;
+    let hasLot = false;
+    let hasExp = false;
+
+    // =========================
+    // STEP 1: BARCODE CHECK
+    // =========================
+    function setBarcode(answer) {
+      hasBarcode = answer;
+
+      if (hasBarcode) {
+        goScan();
+        return;
+      }
+
+      showLotQuestion();
+    }
+
+    // =========================
+    // STEP 2: LOT
+    // =========================
+    function showLotQuestion() {
+      document.getElementById("questions").innerHTML = `
+        <p>Does this item have a LOT number?</p>
+        <button onclick="setLot(true)">Yes</button>
+        <button onclick="setLot(false)">No</button>
+      `;
+    }
 
     function setLot(answer) {
       hasLot = answer;
 
-      if (!hasLot) {
-        // If no LOT, we skip EXP question (it doesn't matter downstream)
-        hasExpiry = false;
-        goManual(hasLot, hasExpiry);
-        return;
-      }
+      showExpQuestion();
+    }
 
+    // =========================
+    // STEP 3: EXP
+    // =========================
+    function showExpQuestion() {
       document.getElementById("questions").innerHTML = `
         <p>Does this item have an expiration date?</p>
-        <button onclick="setExpiry(true)">Yes</button>
-        <button onclick="setExpiry(false)">No</button>
+        <button onclick="setExp(true)">Yes</button>
+        <button onclick="setExp(false)">No</button>
       `;
     }
 
-    function setExpiry(answer) {
-      hasExpiry = answer;
+    function setExp(answer) {
+      hasExp = answer;
 
-      document.getElementById("questions").innerHTML = `
-        <p>Does this item have a barcode?</p>
-        <button onclick="setBarcode(true)">Yes</button>
-        <button onclick="setBarcode(false)">No</button>
-      `;
+      goManual();
     }
 
-    function setBarcode(answer) {
-      if (answer) {
-        goScan();
-      } else {
-        goManual(hasLot, hasExpiry);
-      }
-    }
-
+    // =========================
+    // NAVIGATION
+    // =========================
     function goScan() {
       window.location.href =
         "scan.html?warehouse=" + encodeURIComponent(warehouse) +
@@ -70,13 +87,13 @@
         "&sku=" + encodeURIComponent(sku);
     }
 
-    function goManual(lot, exp) {
+    function goManual() {
       window.location.href =
         "manual.html?warehouse=" + encodeURIComponent(warehouse) +
         "&bin=" + encodeURIComponent(bin) +
         "&sku=" + encodeURIComponent(sku) +
-        "&lot=" + lot +
-        "&exp=" + exp;
+        "&lot=" + hasLot +
+        "&exp=" + hasExp;
     }
 
     function goBack() {

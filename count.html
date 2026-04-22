@@ -71,16 +71,21 @@
     const bin = params.get("bin");
 
     document.getElementById("header").innerText =
-      "Warehouse: " + warehouse + " | Bin: " + bin;
+      "Warehouse: " + (warehouse || "ALL") + " | Bin: " + (bin || "ALL");
 
     function loadTable() {
       const key = "cycleCountData";
       const data = JSON.parse(localStorage.getItem(key)) || [];
 
-      const filtered = data.filter(item =>
-        item.warehouse === warehouse &&
-        item.bin === bin
-      );
+      let filtered = data;
+
+      // 🔥 ONLY filter if BOTH values exist
+      if (warehouse && bin) {
+        filtered = data.filter(item =>
+          item.warehouse === warehouse &&
+          item.bin === bin
+        );
+      }
 
       const tbody = document.getElementById("tableBody");
       tbody.innerHTML = "";
@@ -90,8 +95,8 @@
 
         row.innerHTML = `
           <td>${item.sku}</td>
-          <td>${item.lot}</td>
-          <td>${item.expiry}</td>
+          <td>${item.lot || ""}</td>
+          <td>${item.expiry || ""}</td>
           <td>${item.qty}</td>
         `;
 
@@ -101,8 +106,8 @@
 
     function goToAddItem() {
       window.location.href =
-        "item.html?warehouse=" + warehouse +
-        "&bin=" + encodeURIComponent(bin);
+        "item.html?warehouse=" + encodeURIComponent(warehouse || "") +
+        "&bin=" + encodeURIComponent(bin || "");
     }
 
     function completeCount() {
@@ -112,25 +117,21 @@
       const data = JSON.parse(localStorage.getItem(key)) || [];
       const completed = JSON.parse(localStorage.getItem(completedKey)) || [];
 
-      const thisCount = data.filter(item =>
-        item.warehouse === warehouse &&
-        item.bin === bin
-      );
+      let thisCount = data;
+
+      if (warehouse && bin) {
+        thisCount = data.filter(item =>
+          item.warehouse === warehouse &&
+          item.bin === bin
+        );
+      }
 
       thisCount.forEach(item => {
-        completed.push({
-          warehouse: item.warehouse,
-          bin: item.bin,
-          sku: item.sku,
-          lot: item.lot,
-          expiry: item.expiry,
-          qty: item.qty
-        });
+        completed.push(item);
       });
 
       localStorage.setItem(completedKey, JSON.stringify(completed));
 
-      // optional cleanup (keeps system clean)
       const remaining = data.filter(item =>
         !(item.warehouse === warehouse && item.bin === bin)
       );
