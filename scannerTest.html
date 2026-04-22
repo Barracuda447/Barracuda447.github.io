@@ -83,7 +83,7 @@ function processScan(raw) {
     let data = raw;
 
     // =========================
-    // STEP 1: HANDLE GTIN MODE
+    // GTIN REMOVAL
     // =========================
     const isGTIN = /^01\d{14}/.test(data);
 
@@ -95,7 +95,7 @@ function processScan(raw) {
     console.log("WORKING:", data);
 
     // =========================
-    // EXP (17)
+    // STEP 1: EXTRACT EXP FIRST
     // =========================
     let exp = '';
     const expMatch = data.match(/17(\d{6})/);
@@ -103,10 +103,13 @@ function processScan(raw) {
     if (expMatch) {
         const r = expMatch[1];
         exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
+
+        // IMPORTANT: remove EXP so it cannot interfere with LOT parsing
+        data = data.replace(/17\d{6}/, '');
     }
 
     // =========================
-    // LOT (10 anchor, GS safe)
+    // STEP 2: LOT (safe anchor at 10)
     // =========================
     let lot = '';
     const lotIndex = data.indexOf('10');
@@ -119,8 +122,8 @@ function processScan(raw) {
         while (i < data.length) {
             const ch = data.charAt(i);
 
-            if (ch === GS) break; // GS separator
-            if (ch.charCodeAt(0) < 32) break; // control char
+            if (ch === GS) break;               // GS separator
+            if (ch.charCodeAt(0) < 32) break;   // control character
 
             lot += ch;
             i++;
