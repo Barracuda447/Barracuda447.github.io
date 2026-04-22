@@ -3,94 +3,85 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner Flow</title>
+    <title>Scanner Counter</title>
     <style>
-        .step { display: none; }
-        .active { display: block; }
+        body { font-family: Arial; }
+        .hidden { display: none; }
+        table { border-collapse: collapse; margin-top: 20px; }
+        td, th { border: 1px solid #ccc; padding: 8px; }
     </style>
 </head>
 <body>
 
-    <h2 id="title">Step 1: Enter SKU</h2>
+    <h2>Scan Items</h2>
 
-    <!-- STEP 1 -->
-    <div id="step1" class="step active">
-        <input type="text" id="sku" placeholder="Enter SKU">
+    <!-- SKU ENTRY -->
+    <div id="skuSection">
+        <label>Enter SKU:</label><br>
+        <input type="text" id="sku">
         <br><br>
-        <button onclick="nextStep(2)">Next</button>
+        <button onclick="startScanning()">Start Scanning</button>
     </div>
 
-    <!-- STEP 2 -->
-    <div id="step2" class="step">
-        <p>Scan barcode</p>
+    <!-- SCANNING SECTION -->
+    <div id="scanSection" class="hidden">
+        <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
+        <p>Scan barcode...</p>
         <input type="text" id="scanInput" autofocus>
     </div>
 
-    <!-- STEP 3 -->
-    <div id="step3" class="step">
-        <p>Review / Edit</p>
+    <!-- RESULTS -->
+    <table id="resultTable" class="hidden">
+        <thead>
+            <tr>
+                <th>LOT</th>
+                <th>Expiration</th>
+                <th>Quantity</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
 
-        <label>LOT:</label><br>
-        <input type="text" id="lot"><br><br>
-
-        <label>Expiration:</label><br>
-        <input type="date" id="exp"><br><br>
-
-        <button onclick="nextStep(4)">Confirm</button>
-    </div>
-
-    <!-- STEP 4 -->
-    <div id="step4" class="step">
-        <p>Enter Quantity</p>
-        <input type="number" id="qty"><br><br>
-        <button onclick="submitForm()">Submit</button>
-    </div>
+    <br>
+    <button onclick="resetAll()">Reset</button>
 
     <script>
-        let currentStep = 1;
+        const scanInput = document.getElementById('scanInput');
+        const tableBody = document.querySelector('#resultTable tbody');
 
-        function nextStep(step) {
-            document.getElementById('step' + currentStep).classList.remove('active');
-            currentStep = step;
-            document.getElementById('step' + currentStep).classList.add('active');
+        let dataStore = {}; 
+        // key = "lot|exp" → { lot, exp, qty }
 
-            updateTitle();
+        function startScanning() {
+            const sku = document.getElementById('sku').value.trim();
+            if (!sku) return alert("Enter SKU first");
 
-            const input = document.querySelector('#step' + currentStep + ' input');
-            if (input) input.focus();
+            document.getElementById('skuDisplay').innerText = sku;
+            document.getElementById('skuSection').classList.add('hidden');
+            document.getElementById('scanSection').classList.remove('hidden');
+            document.getElementById('resultTable').classList.remove('hidden');
+
+            scanInput.focus();
         }
 
-        function updateTitle() {
-            const titles = {
-                1: "Step 1: Enter SKU",
-                2: "Step 2: Scan Barcode",
-                3: "Step 3: Review / Edit",
-                4: "Step 4: Enter Quantity"
-            };
-            document.getElementById('title').innerText = titles[currentStep];
-        }
-
-        // --- HANDLE SCAN ---
-        document.getElementById('scanInput').addEventListener('keydown', function(e) {
+        scanInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
-                let data = this.value.trim();
+                let raw = scanInput.value.trim();
+                scanInput.value = '';
 
-                console.log("RAW:", data);
+                let working = raw;
 
-                let working = data;
-
-                // --- If long, assume GTIN and remove it ---
-                if (data.length >= 20 && data.startsWith('01')) {
-                    working = data.slice(16);
-                    console.log("GTIN removed:", working);
+                // Remove GTIN if present
+                if (working.length >= 20 && working.startsWith('01')) {
+                    working = working.slice(16);
                 }
 
                 // --- EXP ---
+                let exp = '';
                 const expMatch = working.match(/17(\d{6})/);
                 if (expMatch) {
-                    const raw = expMatch[1];
-                    const formatted = `20${raw.slice(0,2)}-${raw.slice(2,4)}-${raw.slice(4,6)}`;
-                    document.getElementById('exp').value = formatted;
+                    const r = expMatch[1];
+                    exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
                 }
 
                 // --- LOT ---
@@ -106,26 +97,40 @@
                     }
                 }
 
-                console.log("LOT parsed:", lot);
+                if (!lot || !exp) {
+                    console.log("Could not parse:", raw);
+                    return;
+                }
 
-                document.getElementById('lot').value = lot;
+                const key = lot + "|" + exp;
 
-                this.value = '';
-                nextStep(3);
+                if (!dataStore[key]) {
+                    dataStore[key] = { lot, exp, qty: 0 };
+                }
+
+                dataStore[key].qty++;
+
+                renderTable();
             }
         });
 
-        function submitForm() {
-            const result = {
-                sku: document.getElementById('sku').value,
-                lot: document.getElementById('lot').value,
-                exp: document.getElementById('exp').value,
-                qty: document.getElementById('qty').value
-            };
+        function renderTable() {
+            tableBody.innerHTML = '';
 
-            console.log("FINAL:", result);
-            alert("Submitted!");
+            Object.values(dataStore).forEach(item => {
+                const row = document.createElement('tr');
 
+                row.innerHTML = `
+                    <td>${item.lot}</td>
+                    <td>${item.exp}</td>
+                    <td>${item.qty}</td>
+                `;
+
+                tableBody.appendChild(row);
+            });
+        }
+
+        function resetAll() {
             location.reload();
         }
     </script>
