@@ -195,15 +195,12 @@
         .replace(/\s/g, "")
         .trim();
 
-    //   let lotMatch = clean.match(/\(10\)([^\(]+)/);
-    //   let expMatch = clean.match(/\(17\)(\d{6})/);
+      let lotMatch = clean.match(/\(?10\)?([^\(]+?)(?=\(17\)|17|$)/);
+      let expMatch = clean.match(/\(17\)(\d{6})/);
 
-    //   if (!lotMatch) {
-    //     lotMatch = clean.match(/(?:^|[^0-9])10([A-Za-z0-9\-]{1,20})17/);      }
-
-    //   if (!expMatch) {
-    //     expMatch = clean.match(/17(\d{6})/);
-    //   }
+      if (!expMatch) {
+        expMatch = clean.match(/17(\d{6})/);
+      }
 
       if (!lotMatch && clean.includes("10") && clean.includes("17")) {
         const split = clean.split("17");
