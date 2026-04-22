@@ -8,18 +8,23 @@
 <body>
     <button onclick="window.location.href='index.html'">Go Back to Index</button>
     <br><br>
-    <label for="sku">SKU:</label>
-    <input type="text" id="sku" name="sku">
+
+    <label for="sku">Scan Barcode:</label>
+    <input type="text" id="sku" name="sku" autofocus>
     <br><br>
+
     <label for="lot">LOT:</label>
     <input type="text" id="lot" name="lot">
     <br><br>
+
     <label for="expiration">Expiration Date:</label>
     <input type="date" id="expiration" name="expiration">
     <br><br>
+
     <label for="quantity">Quantity:</label>
     <input type="number" id="quantity" name="quantity">
     <br><br>
+
     <button type="submit">Submit</button>
 
     <script>
@@ -30,18 +35,33 @@
         skuInput.addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
                 const scannedData = skuInput.value.trim();
-                // Parse for LOT
-                const lotMatch = scannedData.match(/LOT:\s*([^ ]+)/i);
+
+                console.log("Raw scan:", scannedData);
+                console.log("Char codes:", [...scannedData].map(c => c.charCodeAt(0)));
+
+                // --- LOT (AI 10, variable length) ---
+                // Stops at GS (ASCII 29) if present
+                let lotMatch = scannedData.match(/10([^\x1D]+)/);
                 if (lotMatch) {
                     lotInput.value = lotMatch[1];
                 }
-                // Parse for EXP
-                const expMatch = scannedData.match(/EXP:\s*([^ ]+)/i);
+
+                // --- EXPIRATION (AI 17, fixed YYMMDD) ---
+                let expMatch = scannedData.match(/17(\d{6})/);
                 if (expMatch) {
-                    expirationInput.value = expMatch[1];
+                    const raw = expMatch[1];
+                    const year = '20' + raw.substring(0, 2);
+                    const month = raw.substring(2, 4);
+                    const day = raw.substring(4, 6);
+
+                    expirationInput.value = `${year}-${month}-${day}`;
                 }
-                // Optionally clear SKU or leave it
-                // skuInput.value = '';
+
+                // Optional: clear scan field after processing
+                skuInput.value = '';
+
+                // Optional: move cursor to next field
+                lotInput.focus();
             }
         });
     </script>
