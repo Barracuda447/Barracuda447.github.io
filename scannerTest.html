@@ -83,19 +83,16 @@ function processScan(raw) {
     let data = raw;
 
     // =========================
-    // GTIN REMOVAL
+    // STEP 1: REMOVE GTIN
     // =========================
-    const isGTIN = /^01\d{14}/.test(data);
-
-    if (isGTIN) {
-        console.log("GTIN detected");
+    if (/^01\d{14}/.test(data)) {
         data = data.slice(16);
     }
 
-    console.log("WORKING:", data);
+    console.log("AFTER GTIN:", data);
 
     // =========================
-    // STEP 1: EXTRACT EXP FIRST
+    // STEP 2: EXTRACT + REMOVE EXP (17)
     // =========================
     let exp = '';
     const expMatch = data.match(/17(\d{6})/);
@@ -104,12 +101,14 @@ function processScan(raw) {
         const r = expMatch[1];
         exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
 
-        // IMPORTANT: remove EXP so it cannot interfere with LOT parsing
+        // remove full 17 + 6 digits
         data = data.replace(/17\d{6}/, '');
     }
 
+    console.log("AFTER EXP REMOVAL:", data);
+
     // =========================
-    // STEP 2: LOT (safe anchor at 10)
+    // STEP 3: FIND LOT (LEFT → RIGHT)
     // =========================
     let lot = '';
     const lotIndex = data.indexOf('10');
@@ -122,8 +121,8 @@ function processScan(raw) {
         while (i < data.length) {
             const ch = data.charAt(i);
 
-            if (ch === GS) break;               // GS separator
-            if (ch.charCodeAt(0) < 32) break;   // control character
+            if (ch === GS) break;
+            if (ch.charCodeAt(0) < 32) break;
 
             lot += ch;
             i++;
