@@ -16,6 +16,16 @@
       font-size: 14px;
       color: #555;
     }
+
+    button {
+      padding: 12px;
+      margin-top: 10px;
+      width: 100%;
+      background: #007BFF;
+      color: white;
+      border: none;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
@@ -24,12 +34,10 @@
 
   <video id="video" autoplay></video>
 
-  <br><br>
-
-  <button onclick="startSession()">SCAN</button>
+  <button onclick="scanNow()">SCAN</button>
 
   <p class="hint">
-    Press SPACE or click Scan button (1 scan per trigger)
+    Tap SCAN to capture barcode from camera
   </p>
 
   <button onclick="goToResults()">View Results</button>
@@ -50,38 +58,25 @@
     // =========================
     // AUDIO
     // =========================
-    let audioCtx = null;
-    let audioUnlocked = false;
+    let audioCtx;
+    let audioReady = false;
 
-    function initAudioHard() {
+    function initAudio() {
       if (!audioCtx) {
         audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
 
       return audioCtx.resume().then(() => {
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-
-        osc.frequency.value = 100;
-        gain.gain.value = 0.01;
-
-        osc.connect(gain);
-        gain.connect(audioCtx.destination);
-
-        osc.start();
-        osc.stop(audioCtx.currentTime + 0.05);
-
-        audioUnlocked = true;
+        audioReady = true;
       });
     }
 
     function beep() {
-      if (!audioCtx || !audioUnlocked) return;
+      if (!audioCtx || !audioReady) return;
 
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
 
-      osc.type = "sine";
       osc.frequency.value = 900;
       gain.gain.value = 0.08;
 
@@ -108,38 +103,25 @@
     startCamera();
 
     // =========================
-    // SESSION START
+    // SCAN BUTTON ONLY
     // =========================
-    function startSession() {
-      initAudioHard().then(triggerScan);
-    }
-
-    // =========================
-    // SCAN TRIGGER
-    // =========================
-    function triggerScan() {
+    function scanNow() {
       if (scanning) return;
       if (!latestFrame) return;
 
       scanning = true;
 
-      handleScan(latestFrame);
+      initAudio().then(() => {
+        handleScan(latestFrame);
+      });
 
-      setTimeout(() => scanning = false, 300);
+      setTimeout(() => {
+        scanning = false;
+      }, 500);
     }
 
     // =========================
-    // KEYBOARD
-    // =========================
-    document.addEventListener("keydown", (e) => {
-      if (e.code === "Space") {
-        e.preventDefault();
-        initAudioHard().then(triggerScan);
-      }
-    });
-
-    // =========================
-    // GS1 PARSER (FIXED)
+    // GS1 PARSER (SAFE)
     // =========================
     function parseBarcode(text) {
       let lot = "";
@@ -181,12 +163,11 @@
 
     function formatDate(raw) {
       if (!raw || raw.length !== 6) return "";
-
       return `20${raw.slice(0,2)}-${raw.slice(2,4)}-${raw.slice(4,6)}`;
     }
 
     // =========================
-    // HANDLE SCAN (MULTI-LOT SAFE)
+    // HANDLE SCAN (MERGE LOGIC)
     // =========================
     function handleScan(text) {
       const { lot, exp } = parseBarcode(text);
