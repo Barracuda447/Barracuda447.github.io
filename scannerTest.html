@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner Test</title>
+</head>
+<body>
+    <button onclick="window.location.href='index.html'">Go Back to Index</button>
+    <br><br>
+    <label for="sku">SKU:</label>
+    <input type="text" id="sku" name="sku">
+    <br><br>
+    <label for="lot">LOT:</label>
+    <input type="text" id="lot" name="lot">
+    <br><br>
+    <label for="expiration">Expiration Date:</label>
+    <input type="date" id="expiration" name="expiration">
+    <br><br>
+    <label for="quantity">Quantity:</label>
+    <input type="number" id="quantity" name="quantity">
+    <br><br>
+    <button type="submit">Submit</button>
+
+    <script>
+        const skuInput = document.getElementById('sku');
+        const lotInput = document.getElementById('lot');
+        const expirationInput = document.getElementById('expiration');
+
+        skuInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                const scannedData = skuInput.value.trim();
+                // Parse for LOT
+                const lotMatch = scannedData.match(/LOT:\s*([^ ]+)/i);
+                if (lotMatch) {
+                    lotInput.value = lotMatch[1];
+                }
+                // Parse for EXP
+                const expMatch = scannedData.match(/EXP:\s*([^ ]+)/i);
+                if (expMatch) {
+                    expirationInput.value = expMatch[1];
+                }
+                // Optionally clear SKU or leave it
+                // skuInput.value = '';
+            }
+        });
+    </script>
+</body>
+</html>

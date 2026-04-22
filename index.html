@@ -173,6 +173,7 @@
 
   <button class="btn" onclick="goToWarehouse()">Create New Count</button>
   <button class="btn" onclick="goToExport()">Export & Email</button>
+  <button class="btn" onclick="goToScannerTest()">Scanner Test</button>
   <script>
     let allData = [];
     let currentPage = 1;
@@ -184,6 +185,10 @@
 
     function goToExport() {
       window.location.href = "export.html";
+    }
+
+    function goToScannerTest() {
+      window.location.href = "scannerTest.html";
     }
 
     function loadCompleted() {
