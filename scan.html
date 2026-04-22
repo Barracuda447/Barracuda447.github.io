@@ -203,9 +203,11 @@
       }
 
       if (!lotMatch && clean.includes("10") && clean.includes("17")) {
-        const split = clean.split("17");
-        if (split[0].includes("10")) {
-          lot = split[0].replace("10", "").trim();
+        const lotStart = clean.indexOf("10");
+        const expStart = clean.indexOf("17");
+
+        if (lotStart !== -1 && expStart !== -1 && lotStart < expStart) {
+          lot = clean.substring(lotStart + 2, expStart).trim();
         }
       } else if (lotMatch) {
         lot = lotMatch[1].trim();
