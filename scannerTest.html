@@ -13,150 +13,154 @@
 </head>
 <body>
 
-    <h2>Scan Items</h2>
+<h2>Scan Items</h2>
 
-    <!-- SKU -->
-    <div id="skuSection">
-        <label>Enter SKU:</label><br>
-        <input type="text" id="sku">
-        <br><br>
-        <button onclick="startScanning()">Start Scanning</button>
-    </div>
+<div id="skuSection">
+    <label>Enter SKU:</label><br>
+    <input type="text" id="sku">
+    <br><br>
+    <button onclick="startScanning()">Start Scanning</button>
+</div>
 
-    <!-- SCAN -->
-    <div id="scanSection" class="hidden">
-        <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
-        <p>Scan continuously...</p>
-        <input type="text" id="scanInput" autofocus>
-    </div>
+<div id="scanSection" class="hidden">
+    <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
+    <p>Scan continuously...</p>
+    <input type="text" id="scanInput" autofocus>
+</div>
 
-    <!-- TABLE -->
-    <table id="resultTable" class="hidden">
-        <thead>
-            <tr>
-                <th>LOT</th>
-                <th>Expiration</th>
-                <th>Quantity</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+<table id="resultTable" class="hidden">
+    <thead>
+        <tr>
+            <th>LOT</th>
+            <th>Expiration</th>
+            <th>Quantity</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
 
-    <br>
-    <button onclick="resetAll()">Reset</button>
+<br>
+<button onclick="resetAll()">Reset</button>
 
-    <script>
-        const scanInput = document.getElementById('scanInput');
-        const tableBody = document.querySelector('#resultTable tbody');
+<script>
+const scanInput = document.getElementById('scanInput');
+const tableBody = document.querySelector('#resultTable tbody');
 
-        let dataStore = {};
-        let buffer = '';
-        let timer = null;
+let dataStore = {};
+let buffer = '';
+let timer = null;
 
-        function startScanning() {
-            const sku = document.getElementById('sku').value.trim();
-            if (!sku) return alert("Enter SKU first");
+function startScanning() {
+    const sku = document.getElementById('sku').value.trim();
+    if (!sku) return alert("Enter SKU first");
 
-            document.getElementById('skuDisplay').innerText = sku;
-            document.getElementById('skuSection').classList.add('hidden');
-            document.getElementById('scanSection').classList.remove('hidden');
-            document.getElementById('resultTable').classList.remove('hidden');
+    document.getElementById('skuDisplay').innerText = sku;
+    document.getElementById('skuSection').classList.add('hidden');
+    document.getElementById('scanSection').classList.remove('hidden');
+    document.getElementById('resultTable').classList.remove('hidden');
 
-            scanInput.focus();
+    scanInput.focus();
+}
+
+// --- auto scan detection ---
+scanInput.addEventListener('input', function () {
+    buffer = scanInput.value;
+
+    clearTimeout(timer);
+
+    timer = setTimeout(() => {
+        processScan(buffer);
+        buffer = '';
+        scanInput.value = '';
+    }, 100);
+});
+
+function processScan(raw) {
+    if (!raw) return;
+
+    console.log("RAW:", raw);
+
+    let data = raw;
+
+    // Remove GTIN ONLY if clearly present (01 + 14 digits at start)
+    if (/^01\d{14}/.test(data)) {
+        data = data.slice(16);
+    }
+
+    console.log("WORKING:", data);
+
+    // --- EXP (17) ---
+    let exp = '';
+    const expMatch = data.match(/17(\d{6})/);
+
+    if (expMatch) {
+        const r = expMatch[1];
+        exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
+    }
+
+    // --- LOT (robust scanner-safe parser) ---
+    let lot = '';
+    const lotIndex = data.indexOf('10');
+
+    if (lotIndex !== -1) {
+        let i = lotIndex + 2;
+
+        const GS = String.fromCharCode(29);
+
+        while (i < data.length) {
+            const two = data.substring(i, i + 2);
+
+            // Stop if GS (hidden separator)
+            if (data.charAt(i) === GS) break;
+
+            // Stop if next AI appears (17, 21, etc.)
+            if (/^\d{2}$/.test(two) && (two === '17' || two === '21' || two === '11' || two === '01')) {
+                break;
+            }
+
+            lot += data.charAt(i);
+            i++;
         }
+    }
 
-        // --- NO ENTER REQUIRED: scan burst detection ---
-        scanInput.addEventListener('input', function() {
-            buffer = scanInput.value;
+    console.log("LOT:", lot, "EXP:", exp);
 
-            clearTimeout(timer);
+    if (!lot || !exp) {
+        console.log("Parse failed:", raw);
+        return;
+    }
 
-            timer = setTimeout(() => {
-                processScan(buffer.trim());
-                buffer = '';
-                scanInput.value = '';
-            }, 100); // adjust 80–150ms if needed
-        });
+    const key = lot + "|" + exp;
 
-        function processScan(raw) {
-            if (!raw) return;
+    if (!dataStore[key]) {
+        dataStore[key] = { lot, exp, qty: 0 };
+    }
 
-            console.log("RAW:", raw);
+    dataStore[key].qty++;
 
-            let working = raw;
+    renderTable();
+}
 
-            // --- Remove GTIN if present (01 + 14 digits) ---
-            if (working.startsWith('01') && working.length >= 20) {
-                working = working.slice(16);
-            }
+function renderTable() {
+    tableBody.innerHTML = '';
 
-            console.log("WORKING:", working);
+    Object.values(dataStore).forEach(item => {
+        const row = document.createElement('tr');
 
-            // --- EXP (17) ---
-            let exp = '';
-            const expMatch = working.match(/17(\d{6})/);
+        row.innerHTML = `
+            <td>${item.lot}</td>
+            <td>${item.exp}</td>
+            <td>${item.qty}</td>
+        `;
 
-            if (expMatch) {
-                const r = expMatch[1];
-                exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
-            }
+        tableBody.appendChild(row);
+    });
+}
 
-            // --- LOT (MUST start at 10, stop at next AI) ---
-            let lot = '';
-
-            const lotIndex = working.indexOf('10');
-
-            if (lotIndex !== -1) {
-                let after = working.slice(lotIndex + 2);
-
-                // Find next AI (any 2-digit AI like 17, 21, 11, etc.)
-                const nextAI = after.search(/\d{2}(?=\d)/);
-
-                if (nextAI !== -1) {
-                    lot = after.slice(0, nextAI);
-                } else {
-                    lot = after;
-                }
-            }
-
-            console.log("LOT:", lot, "EXP:", exp);
-
-            if (!lot || !exp) {
-                console.log("Parse failed:", raw);
-                return;
-            }
-
-            const key = lot + "|" + exp;
-
-            if (!dataStore[key]) {
-                dataStore[key] = { lot, exp, qty: 0 };
-            }
-
-            dataStore[key].qty++;
-
-            renderTable();
-        }
-
-        function renderTable() {
-            tableBody.innerHTML = '';
-
-            Object.values(dataStore).forEach(item => {
-                const row = document.createElement('tr');
-
-                row.innerHTML = `
-                    <td>${item.lot}</td>
-                    <td>${item.exp}</td>
-                    <td>${item.qty}</td>
-                `;
-
-                tableBody.appendChild(row);
-            });
-        }
-
-        function resetAll() {
-            location.reload();
-        }
-    </script>
+function resetAll() {
+    location.reload();
+}
+</script>
 
 </body>
 </html>
