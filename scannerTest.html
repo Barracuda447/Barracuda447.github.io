@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner Steps</title>
+    <title>Scanner Flow</title>
     <style>
         .step { display: none; }
         .active { display: block; }
@@ -22,31 +22,29 @@
 
     <!-- STEP 2 -->
     <div id="step2" class="step">
-        <p>Scan LOT barcode</p>
-        <input type="text" id="lotScan" autofocus>
+        <p>Scan barcode (contains LOT + EXP)</p>
+        <input type="text" id="scanInput" autofocus>
     </div>
 
     <!-- STEP 3 -->
     <div id="step3" class="step">
-        <p>Scan EXP barcode</p>
-        <input type="text" id="expScan">
+        <p>Review / Edit</p>
+
+        <label>LOT:</label><br>
+        <input type="text" id="lot"><br><br>
+
+        <label>Expiration:</label><br>
+        <input type="date" id="exp"><br><br>
+
+        <button onclick="nextStep(4)">Confirm</button>
     </div>
 
     <!-- STEP 4 -->
     <div id="step4" class="step">
         <p>Enter Quantity</p>
-        <input type="number" id="quantity">
-        <br><br>
+        <input type="number" id="qty"><br><br>
         <button onclick="submitForm()">Submit</button>
     </div>
-
-    <br><br>
-
-    <h3>Collected Data:</h3>
-    SKU: <span id="outSku"></span><br>
-    LOT: <span id="outLot"></span><br>
-    EXP: <span id="outExp"></span><br>
-    QTY: <span id="outQty"></span>
 
     <script>
         let currentStep = 1;
@@ -58,7 +56,6 @@
 
             updateTitle();
 
-            // focus next input
             const input = document.querySelector('#step' + currentStep + ' input');
             if (input) input.focus();
         }
@@ -66,62 +63,64 @@
         function updateTitle() {
             const titles = {
                 1: "Step 1: Enter SKU",
-                2: "Step 2: Scan LOT",
-                3: "Step 3: Scan Expiration",
+                2: "Step 2: Scan Barcode",
+                3: "Step 3: Review / Edit",
                 4: "Step 4: Enter Quantity"
             };
             document.getElementById('title').innerText = titles[currentStep];
         }
 
-        // --- LOT SCAN ---
-        document.getElementById('lotScan').addEventListener('keydown', function(e) {
+        // --- HANDLE SCAN ---
+        document.getElementById('scanInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
-                let data = this.value.trim();
+                const data = this.value.trim();
 
-                // Extract LOT (AI 10)
-                let match = data.match(/10([^\x1D]+)/);
-                let lot = match ? match[1] : data;
+                console.log("SCAN:", data);
 
-                document.getElementById('outLot').innerText = lot;
+                // --- EXP (AI 17) ---
+                const expMatch = data.match(/17(\d{6})/);
+                if (expMatch) {
+                    const raw = expMatch[1];
+                    const formatted = `20${raw.slice(0,2)}-${raw.slice(2,4)}-${raw.slice(4,6)}`;
+                    document.getElementById('exp').value = formatted;
+                }
+
+                // --- LOT (AI 10) ---
+                let lot = '';
+                const lotStart = data.indexOf('10');
+
+                if (lotStart !== -1) {
+                    let lotEnd = data.length;
+
+                    // Stop at next known AI (since GS might not exist)
+                    const rest = data.slice(lotStart + 2);
+                    const nextAI = rest.match(/(17|01|21)/);
+
+                    if (nextAI) {
+                        lotEnd = lotStart + 2 + nextAI.index;
+                    }
+
+                    lot = data.slice(lotStart + 2, lotEnd);
+                }
+
+                document.getElementById('lot').value = lot;
 
                 this.value = '';
                 nextStep(3);
             }
         });
 
-        // --- EXP SCAN ---
-        document.getElementById('expScan').addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                let data = this.value.trim();
-
-                // Extract EXP (AI 17)
-                let match = data.match(/17(\d{6})/);
-                let formatted = '';
-
-                if (match) {
-                    let raw = match[1];
-                    formatted = `20${raw.slice(0,2)}-${raw.slice(2,4)}-${raw.slice(4,6)}`;
-                } else {
-                    formatted = data;
-                }
-
-                document.getElementById('outExp').innerText = formatted;
-
-                this.value = '';
-                nextStep(4);
-            }
-        });
-
         function submitForm() {
-            const sku = document.getElementById('sku').value;
-            const qty = document.getElementById('quantity').value;
+            const result = {
+                sku: document.getElementById('sku').value,
+                lot: document.getElementById('lot').value,
+                exp: document.getElementById('exp').value,
+                qty: document.getElementById('qty').value
+            };
 
-            document.getElementById('outSku').innerText = sku;
-            document.getElementById('outQty').innerText = qty;
-
+            console.log("FINAL DATA:", result);
             alert("Submitted!");
 
-            // reset
             location.reload();
         }
     </script>
