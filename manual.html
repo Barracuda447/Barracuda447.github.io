@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Manual Entry</title>
+</head>
+<body>
+
+  <h2>Manual Entry</h2>
+
+  <p id="info"></p>
+
+  <!-- LOT -->
+  <div id="lotSection">
+    <label>LOT:</label>
+    <input type="text" id="lotInput">
+  </div>
+
+  <br>
+
+  <!-- EXPIRY -->
+  <div id="expirySection">
+    <label>Expiration Date:</label>
+    <input type="date" id="expiryInput">
+  </div>
+
+  <br>
+
+  <!-- QTY -->
+  <div>
+    <label>On Hand Quantity:</label>
+    <input type="number" id="qtyInput" min="0">
+  </div>
+
+  <br>
+
+  <button onclick="save()">Save Item</button>
+  <button onclick="cancel()">Cancel</button>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+
+    const warehouse = params.get("warehouse") || "";
+    const bin = params.get("bin") || "";
+    const sku = params.get("sku") || "";
+
+    // ✅ These now come from setup page (no guessing anymore)
+    const hasLot = params.get("lot") === "true";
+    const hasExp = params.get("exp") === "true";
+
+    const barcode = params.get("barcode");
+    const noBarcode = !barcode || barcode === "null" || barcode === "undefined";
+
+    document.getElementById("info").innerText =
+      "SKU: " + sku + " | Warehouse: " + warehouse + " | Bin: " + bin;
+
+    const lotSection = document.getElementById("lotSection");
+    const expirySection = document.getElementById("expirySection");
+
+    // =========================
+    // ✅ FINAL DISPLAY RULES
+    // =========================
+
+    const showLot = noBarcode && hasLot;
+    const showExp = noBarcode && hasExp;
+
+    lotSection.style.display = showLot ? "block" : "none";
+    expirySection.style.display = showExp ? "block" : "none";
+
+    function save() {
+      const qty = parseInt(document.getElementById("qtyInput").value, 10);
+
+      if (!qty || qty <= 0) {
+        alert("Please enter a valid quantity.");
+        return;
+      }
+
+      const lot = showLot ? document.getElementById("lotInput").value.trim() : "";
+      const expiry = showExp ? document.getElementById("expiryInput").value : "";
+
+      const key = "cycleCountData";
+      let data = JSON.parse(localStorage.getItem(key)) || [];
+
+      const existing = data.find(item =>
+        item.sku === sku &&
+        item.bin === bin &&
+        item.lot === lot
+      );
+
+      if (existing) {
+        existing.qty += qty;
+      } else {
+        data.push({ warehouse, bin, sku, lot, expiry, qty });
+      }
+
+      localStorage.setItem(key, JSON.stringify(data));
+
+      window.location.href =
+        "count.html?warehouse=" + encodeURIComponent(warehouse) +
+        "&bin=" + encodeURIComponent(bin);
+    }
+
+    function cancel() {
+      window.history.back();
+    }
+  </script>
+
+</body>
+</html>

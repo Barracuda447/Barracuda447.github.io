@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scan Results</title>
+
+  <style>
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    td, th {
+      border: 1px solid #ccc;
+      padding: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Scan Results</h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>LOT</th>
+        <th>EXP</th>
+        <th>QTY</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <br>
+
+  <button onclick="clearSession()">Clear</button>
+  <button onclick="finish()">Finish & Save</button>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+
+    const warehouse = params.get("warehouse") || "";
+    const bin = params.get("bin") || "";
+
+    function load() {
+      const data = JSON.parse(sessionStorage.getItem("scanSession")) || [];
+      const tbody = document.getElementById("tableBody");
+
+      tbody.innerHTML = "";
+
+      data.forEach(item => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${item.sku}</td>
+          <td>${item.lot || ""}</td>
+          <td>${item.exp || ""}</td>
+          <td>${item.qty}</td>
+        `;
+
+        tbody.appendChild(row);
+      });
+    }
+
+    function clearSession() {
+      sessionStorage.removeItem("scanSession");
+      load();
+    }
+
+    function finish() {
+      const data = JSON.parse(sessionStorage.getItem("scanSession")) || [];
+
+      console.log("FINAL SUBMISSION:", data);
+
+      alert("Saved " + data.length + " scan groups");
+
+      sessionStorage.removeItem("scanSession");
+
+      window.location.href =
+        "count.html?warehouse=" + encodeURIComponent(warehouse) +
+        "&bin=" + encodeURIComponent(bin);
+    }
+
+    load();
+  </script>
+
+</body>
+</html>

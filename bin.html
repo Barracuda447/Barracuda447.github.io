@@ -11,23 +11,34 @@
   <p>Enter the bin location to count:</p>
 
   <input type="text" id="binInput" placeholder="e.g. A1-01">
+
   <br><br>
 
   <button onclick="beginCount()">Begin Count</button>
+  <button onclick="goBack()">Back</button>
 
   <script>
-    // Get warehouse from URL
     const params = new URLSearchParams(window.location.search);
     const warehouse = params.get("warehouse");
 
-    // Display it
     document.getElementById("warehouse-title").innerText =
       "Warehouse: " + warehouse;
 
     function beginCount() {
-      const bin = document.getElementById("binInput").value;
-      alert("Warehouse: " + warehouse + "\nBin: " + bin);
-      // We'll use both values later
+      const bin = document.getElementById("binInput").value.trim();
+
+      if (!bin) {
+        alert("Please enter a bin location.");
+        return;
+      }
+
+      window.location.href =
+        "count.html?warehouse=" + warehouse +
+        "&bin=" + encodeURIComponent(bin);
+    }
+
+    function goBack() {
+      window.location.href = "warehouse.html";
     }
   </script>
 

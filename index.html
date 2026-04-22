@@ -8,18 +8,17 @@
 
   <h2>Cycle Count</h2>
 
-  <div id="table-container">
-    <table border="1">
-      <tr>
-        <th>Item</th>
-        <th>Count</th>
-      </tr>
-      <tr>
-        <td>Sample Item</td>
-        <td>0</td>
-      </tr>
-    </table>
-  </div>
+  <table border="1">
+    <tr>
+      <th>Warehouse</th>
+      <th>Bin</th>
+      <th>Item</th>
+      <th>LOT</th>
+      <th>Expiration Date</th>
+      <th>On Hand</th>
+    </tr>
+    <tbody id="mainTableBody"></tbody>
+  </table>
 
   <br>
 
@@ -29,6 +28,31 @@
     function goToWarehouse() {
       window.location.href = "warehouse.html";
     }
+
+    function loadCompleted() {
+      const key = "completedCounts";
+      const data = JSON.parse(localStorage.getItem(key)) || [];
+
+      const tbody = document.getElementById("mainTableBody");
+      tbody.innerHTML = "";
+
+      data.forEach(item => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${item.warehouse}</td>
+          <td>${item.bin}</td>
+          <td>${item.sku}</td>
+          <td>${item.lot}</td>
+          <td>${item.expiry}</td>
+          <td>${item.qty}</td>
+        `;
+
+        tbody.appendChild(row);
+      });
+    }
+
+    loadCompleted();
   </script>
 
 </body>

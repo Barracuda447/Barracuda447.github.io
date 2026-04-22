@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Enter Item</title>
+</head>
+<body>
+
+  <h2>Enter SKU</h2>
+
+  <input type="text" id="skuInput" placeholder="Enter SKU">
+
+  <br><br>
+
+  <button onclick="goToDetails()">Add Details</button>
+  <button onclick="goBack()">Back</button>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+
+    const warehouse = params.get("warehouse");
+    const bin = params.get("bin");
+
+    function goToDetails() {
+      const sku = document.getElementById("skuInput").value.trim();
+
+      if (!sku) {
+        alert("Please enter a SKU.");
+        return;
+      }
+
+      window.location.href =
+        "details.html?warehouse=" + warehouse +
+        "&bin=" + encodeURIComponent(bin) +
+        "&sku=" + encodeURIComponent(sku);
+    }
+
+    function goBack() {
+      window.history.back();
+    }
+  </script>
+
+</body>
+</html>

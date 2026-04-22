@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Scan Item</title>
+
+  <style>
+    video {
+      width: 100%;
+      max-width: 500px;
+      border: 1px solid #ccc;
+    }
+
+    .hint {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #555;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>Scan Item</h2>
+
+  <video id="video" autoplay></video>
+
+  <br><br>
+
+  <button onclick="triggerScan()">SCAN</button>
+
+  <p class="hint">
+    Press SPACE or click Scan button (1 scan per trigger)
+  </p>
+
+  <button onclick="goToResults()">View Results</button>
+
+  <script src="https://unpkg.com/@zxing/library@latest"></script>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+
+    const warehouse = params.get("warehouse") || "";
+    const bin = params.get("bin") || "";
+    const sku = params.get("sku") || "";
+
+    let codeReader;
+    let latestFrame = null;
+    let scanning = false;
+
+    // =========================
+    // START CAMERA (NO AUTO SCAN)
+    // =========================
+    function startCamera() {
+      codeReader = new ZXing.BrowserMultiFormatReader();
+
+      codeReader.decodeFromVideoDevice(null, "video", (result) => {
+        if (result) {
+          latestFrame = result.getText();
+        }
+      });
+    }
+
+    startCamera();
+
+    // =========================
+    // MANUAL TRIGGER SCAN
+    // =========================
+    function triggerScan() {
+      if (scanning) return;
+
+      if (!latestFrame) return;
+
+      scanning = true;
+
+      handleScan(latestFrame);
+
+      setTimeout(() => {
+        scanning = false;
+      }, 300); // tiny debounce
+    }
+
+    // =========================
+    // KEYBOARD SUPPORT
+    // =========================
+    document.addEventListener("keydown", (e) => {
+      if (e.code === "Space") {
+        e.preventDefault();
+        triggerScan();
+      }
+    });
+
+    // =========================
+    // PARSER
+    // =========================
+    function parseBarcode(text) {
+      let lot = "";
+      let exp = "";
+
+      if (!text) return { lot, exp };
+
+      const clean = text.replace(/\u001d/g, "").trim();
+
+      let lotMatch = clean.match(/\(10\)([^\(]+)/);
+      let expMatch = clean.match(/\(17\)(\d{6})/);
+
+      if (!lotMatch) lotMatch = clean.match(/10([A-Za-z0-9\-]+)/);
+      if (!expMatch) expMatch = clean.match(/17(\d{6})/);
+
+      if (lotMatch) lot = lotMatch[1].split("17")[0].trim();
+      if (expMatch) exp = formatDate(expMatch[1]);
+
+      return { lot, exp };
+    }
+
+    function formatDate(raw) {
+      if (!raw || raw.length !== 6) return "";
+
+      const yy = raw.substring(0, 2);
+      const mm = raw.substring(2, 4);
+      const dd = raw.substring(4, 6);
+
+      return `20${yy}-${mm}-${dd}`;
+    }
+
+    // =========================
+    // HANDLE SCAN (ONE PER PRESS)
+    // =========================
+    function handleScan(text) {
+      const { lot, exp } = parseBarcode(text);
+
+      const key = "scanSession";
+      let session = JSON.parse(sessionStorage.getItem(key)) || [];
+
+      const existing = session.find(x =>
+        x.sku === sku &&
+        x.lot === lot &&
+        x.exp === exp
+      );
+
+      if (existing) {
+        existing.qty += 1;
+      } else {
+        session.push({
+          warehouse,
+          bin,
+          sku,
+          lot,
+          exp,
+          qty: 1
+        });
+      }
+
+      sessionStorage.setItem(key, JSON.stringify(session));
+
+      // 🔊 beep
+      const ctx = new (window.AudioContext || window.webkitAudioContext)();
+      const osc = ctx.createOscillator();
+      osc.frequency.value = 800;
+      osc.connect(ctx.destination);
+      osc.start();
+      setTimeout(() => {
+        osc.stop();
+        ctx.close();
+      }, 100);
+    }
+
+    function goToResults() {
+      window.location.href =
+        "scanResults.html?warehouse=" + encodeURIComponent(warehouse) +
+        "&bin=" + encodeURIComponent(bin) +
+        "&sku=" + encodeURIComponent(sku);
+    }
+  </script>
+
+</body>
+</html>

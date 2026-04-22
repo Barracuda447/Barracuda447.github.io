@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Item Setup</title>
+</head>
+<body>
+
+  <h2>Item Setup</h2>
+
+  <div id="questions">
+    <p>Does this item have a LOT number?</p>
+    <button onclick="setLot(true)">Yes</button>
+    <button onclick="setLot(false)">No</button>
+  </div>
+
+  <br>
+
+  <button onclick="goBack()">Cancel</button>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+
+    const warehouse = params.get("warehouse") || "";
+    const bin = params.get("bin") || "";
+    const sku = params.get("sku") || "";
+
+    let hasLot = null;
+    let hasExpiry = null;
+
+    function setLot(answer) {
+      hasLot = answer;
+
+      if (!hasLot) {
+        // If no LOT, we skip EXP question (it doesn't matter downstream)
+        hasExpiry = false;
+        goManual(hasLot, hasExpiry);
+        return;
+      }
+
+      document.getElementById("questions").innerHTML = `
+        <p>Does this item have an expiration date?</p>
+        <button onclick="setExpiry(true)">Yes</button>
+        <button onclick="setExpiry(false)">No</button>
+      `;
+    }
+
+    function setExpiry(answer) {
+      hasExpiry = answer;
+
+      document.getElementById("questions").innerHTML = `
+        <p>Does this item have a barcode?</p>
+        <button onclick="setBarcode(true)">Yes</button>
+        <button onclick="setBarcode(false)">No</button>
+      `;
+    }
+
+    function setBarcode(answer) {
+      if (answer) {
+        goScan();
+      } else {
+        goManual(hasLot, hasExpiry);
+      }
+    }
+
+    function goScan() {
+      window.location.href =
+        "scan.html?warehouse=" + encodeURIComponent(warehouse) +
+        "&bin=" + encodeURIComponent(bin) +
+        "&sku=" + encodeURIComponent(sku);
+    }
+
+    function goManual(lot, exp) {
+      window.location.href =
+        "manual.html?warehouse=" + encodeURIComponent(warehouse) +
+        "&bin=" + encodeURIComponent(bin) +
+        "&sku=" + encodeURIComponent(sku) +
+        "&lot=" + lot +
+        "&exp=" + exp;
+    }
+
+    function goBack() {
+      window.history.back();
+    }
+  </script>
+
+</body>
+</html>

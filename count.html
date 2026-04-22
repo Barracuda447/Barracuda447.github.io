@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Cycle Count</title>
+
+  <style>
+    body {
+      font-family: Arial;
+      margin: 20px;
+      padding-bottom: 100px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    th, td {
+      border: 1px solid #ccc;
+      padding: 8px;
+    }
+
+    #addItemBtn {
+      position: fixed;
+      bottom: 50px;
+      left: 0;
+      width: 100%;
+      padding: 15px;
+      background: #007BFF;
+      color: white;
+      border: none;
+    }
+
+    #completeBtn {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      padding: 15px;
+      background: green;
+      color: white;
+      border: none;
+    }
+  </style>
+
+</head>
+<body>
+
+  <h2 id="header"></h2>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>LOT</th>
+        <th>Expiration Date</th>
+        <th>On Hand</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+
+  <button id="addItemBtn" onclick="goToAddItem()">Add Item</button>
+  <button id="completeBtn" onclick="completeCount()">Complete Count</button>
+
+  <script>
+    const params = new URLSearchParams(window.location.search);
+
+    const warehouse = params.get("warehouse");
+    const bin = params.get("bin");
+
+    document.getElementById("header").innerText =
+      "Warehouse: " + warehouse + " | Bin: " + bin;
+
+    function loadTable() {
+      const key = "cycleCountData";
+      const data = JSON.parse(localStorage.getItem(key)) || [];
+
+      const filtered = data.filter(item =>
+        item.warehouse === warehouse &&
+        item.bin === bin
+      );
+
+      const tbody = document.getElementById("tableBody");
+      tbody.innerHTML = "";
+
+      filtered.forEach(item => {
+        const row = document.createElement("tr");
+
+        row.innerHTML = `
+          <td>${item.sku}</td>
+          <td>${item.lot}</td>
+          <td>${item.expiry}</td>
+          <td>${item.qty}</td>
+        `;
+
+        tbody.appendChild(row);
+      });
+    }
+
+    function goToAddItem() {
+      window.location.href =
+        "item.html?warehouse=" + warehouse +
+        "&bin=" + encodeURIComponent(bin);
+    }
+
+    function completeCount() {
+      const key = "cycleCountData";
+      const completedKey = "completedCounts";
+
+      const data = JSON.parse(localStorage.getItem(key)) || [];
+      const completed = JSON.parse(localStorage.getItem(completedKey)) || [];
+
+      const thisCount = data.filter(item =>
+        item.warehouse === warehouse &&
+        item.bin === bin
+      );
+
+      thisCount.forEach(item => {
+        completed.push({
+          warehouse: item.warehouse,
+          bin: item.bin,
+          sku: item.sku,
+          lot: item.lot,
+          expiry: item.expiry,
+          qty: item.qty
+        });
+      });
+
+      localStorage.setItem(completedKey, JSON.stringify(completed));
+
+      // optional cleanup (keeps system clean)
+      const remaining = data.filter(item =>
+        !(item.warehouse === warehouse && item.bin === bin)
+      );
+
+      localStorage.setItem(key, JSON.stringify(remaining));
+
+      window.location.href = "index.html";
+    }
+
+    loadTable();
+  </script>
+
+</body>
+</html>
