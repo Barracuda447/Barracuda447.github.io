@@ -22,7 +22,7 @@
 
     <!-- STEP 2 -->
     <div id="step2" class="step">
-        <p>Scan barcode (contains LOT + EXP)</p>
+        <p>Scan barcode</p>
         <input type="text" id="scanInput" autofocus>
     </div>
 
@@ -73,35 +73,40 @@
         // --- HANDLE SCAN ---
         document.getElementById('scanInput').addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
-                const data = this.value.trim();
+                let data = this.value.trim();
 
-                console.log("SCAN:", data);
+                console.log("RAW:", data);
 
-                // --- EXP (AI 17) ---
-                const expMatch = data.match(/17(\d{6})/);
+                let working = data;
+
+                // --- If long, assume GTIN and remove it ---
+                if (data.length >= 20 && data.startsWith('01')) {
+                    working = data.slice(16);
+                    console.log("GTIN removed:", working);
+                }
+
+                // --- EXP ---
+                const expMatch = working.match(/17(\d{6})/);
                 if (expMatch) {
                     const raw = expMatch[1];
                     const formatted = `20${raw.slice(0,2)}-${raw.slice(2,4)}-${raw.slice(4,6)}`;
                     document.getElementById('exp').value = formatted;
                 }
 
-                // --- LOT (AI 10) ---
+                // --- LOT ---
                 let lot = '';
-                const lotStart = data.indexOf('10');
+                const lotStart = working.indexOf('10');
+                const expStart = working.indexOf('17');
 
                 if (lotStart !== -1) {
-                    let lotEnd = data.length;
-
-                    // Stop at next known AI (since GS might not exist)
-                    const rest = data.slice(lotStart + 2);
-                    const nextAI = rest.match(/(17|01|21)/);
-
-                    if (nextAI) {
-                        lotEnd = lotStart + 2 + nextAI.index;
+                    if (expStart !== -1 && expStart > lotStart) {
+                        lot = working.slice(lotStart + 2, expStart);
+                    } else {
+                        lot = working.slice(lotStart + 2);
                     }
-
-                    lot = data.slice(lotStart + 2, lotEnd);
                 }
+
+                console.log("LOT parsed:", lot);
 
                 document.getElementById('lot').value = lot;
 
@@ -118,7 +123,7 @@
                 qty: document.getElementById('qty').value
             };
 
-            console.log("FINAL DATA:", result);
+            console.log("FINAL:", result);
             alert("Submitted!");
 
             location.reload();
