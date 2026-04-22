@@ -62,7 +62,7 @@ function startScanning() {
     scanInput.focus();
 }
 
-// --- auto scan detection (no Enter needed) ---
+// --- auto scan detection ---
 scanInput.addEventListener('input', function () {
     buffer = scanInput.value;
 
@@ -82,14 +82,21 @@ function processScan(raw) {
 
     let data = raw;
 
-    // --- GTIN removal (only if present) ---
-    if (/^01\d{14}/.test(data)) {
+    // =========================
+    // STEP 1: HANDLE GTIN MODE
+    // =========================
+    const isGTIN = /^01\d{14}/.test(data);
+
+    if (isGTIN) {
+        console.log("GTIN detected");
         data = data.slice(16);
     }
 
     console.log("WORKING:", data);
 
-    // --- EXP (17) ---
+    // =========================
+    // EXP (17)
+    // =========================
     let exp = '';
     const expMatch = data.match(/17(\d{6})/);
 
@@ -98,7 +105,9 @@ function processScan(raw) {
         exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
     }
 
-    // --- LOT (ONLY anchored at 10, stops at GS or control char) ---
+    // =========================
+    // LOT (10 anchor, GS safe)
+    // =========================
     let lot = '';
     const lotIndex = data.indexOf('10');
 
@@ -110,11 +119,8 @@ function processScan(raw) {
         while (i < data.length) {
             const ch = data.charAt(i);
 
-            // stop at GS (hidden separator)
-            if (ch === GS) break;
-
-            // stop at any control/non-printable char
-            if (ch.charCodeAt(0) < 32) break;
+            if (ch === GS) break; // GS separator
+            if (ch.charCodeAt(0) < 32) break; // control char
 
             lot += ch;
             i++;
