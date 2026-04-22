@@ -23,10 +23,10 @@
         <button onclick="startScanning()">Start Scanning</button>
     </div>
 
-    <!-- SCANNING SECTION -->
+    <!-- SCANNING -->
     <div id="scanSection" class="hidden">
         <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
-        <p>Scan barcode...</p>
+        <p>Scan continuously...</p>
         <input type="text" id="scanInput" autofocus>
     </div>
 
@@ -49,8 +49,9 @@
         const scanInput = document.getElementById('scanInput');
         const tableBody = document.querySelector('#resultTable tbody');
 
-        let dataStore = {}; 
-        // key = "lot|exp" → { lot, exp, qty }
+        let dataStore = {};
+        let buffer = '';
+        let timer = null;
 
         function startScanning() {
             const sku = document.getElementById('sku').value.trim();
@@ -64,55 +65,67 @@
             scanInput.focus();
         }
 
-        scanInput.addEventListener('keydown', function(e) {
-            if (e.key === 'Enter') {
-                let raw = scanInput.value.trim();
+        scanInput.addEventListener('input', function() {
+            buffer = scanInput.value;
+
+            // Reset timer on every keystroke
+            clearTimeout(timer);
+
+            timer = setTimeout(() => {
+                processScan(buffer.trim());
+                buffer = '';
                 scanInput.value = '';
-
-                let working = raw;
-
-                // Remove GTIN if present
-                if (working.length >= 20 && working.startsWith('01')) {
-                    working = working.slice(16);
-                }
-
-                // --- EXP ---
-                let exp = '';
-                const expMatch = working.match(/17(\d{6})/);
-                if (expMatch) {
-                    const r = expMatch[1];
-                    exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
-                }
-
-                // --- LOT ---
-                let lot = '';
-                const lotStart = working.indexOf('10');
-                const expStart = working.indexOf('17');
-
-                if (lotStart !== -1) {
-                    if (expStart !== -1 && expStart > lotStart) {
-                        lot = working.slice(lotStart + 2, expStart);
-                    } else {
-                        lot = working.slice(lotStart + 2);
-                    }
-                }
-
-                if (!lot || !exp) {
-                    console.log("Could not parse:", raw);
-                    return;
-                }
-
-                const key = lot + "|" + exp;
-
-                if (!dataStore[key]) {
-                    dataStore[key] = { lot, exp, qty: 0 };
-                }
-
-                dataStore[key].qty++;
-
-                renderTable();
-            }
+            }, 100); // adjust if needed (80–150ms typical)
         });
+
+        function processScan(raw) {
+            if (!raw) return;
+
+            console.log("SCAN:", raw);
+
+            let working = raw;
+
+            // Remove GTIN
+            if (working.length >= 20 && working.startsWith('01')) {
+                working = working.slice(16);
+            }
+
+            // --- EXP ---
+            let exp = '';
+            const expMatch = working.match(/17(\d{6})/);
+            if (expMatch) {
+                const r = expMatch[1];
+                exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
+            }
+
+            // --- LOT ---
+            let lot = '';
+            const lotStart = working.indexOf('10');
+            const expStart = working.indexOf('17');
+
+            if (lotStart !== -1) {
+                if (expStart !== -1 && expStart > lotStart) {
+                    lot = working.slice(lotStart + 2, expStart);
+                } else {
+                    lot = working.slice(lotStart + 2);
+                }
+            }
+
+            if (!lot || !exp) {
+                console.log("Parse failed:", raw);
+                return;
+            }
+
+            const key = lot + "|" + exp;
+
+            if (!dataStore[key]) {
+                dataStore[key] = { lot, exp, qty: 0 };
+            }
+
+            dataStore[key].qty++;
+
+            renderTable();
+        }
 
         function renderTable() {
             tableBody.innerHTML = '';
