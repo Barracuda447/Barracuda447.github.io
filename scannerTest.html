@@ -62,7 +62,7 @@ function startScanning() {
     scanInput.focus();
 }
 
-// --- auto scan detection ---
+// --- auto scan detection (no Enter needed) ---
 scanInput.addEventListener('input', function () {
     buffer = scanInput.value;
 
@@ -82,7 +82,7 @@ function processScan(raw) {
 
     let data = raw;
 
-    // Remove GTIN ONLY if clearly present (01 + 14 digits at start)
+    // --- GTIN removal (only if present) ---
     if (/^01\d{14}/.test(data)) {
         data = data.slice(16);
     }
@@ -98,7 +98,7 @@ function processScan(raw) {
         exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
     }
 
-    // --- LOT (robust scanner-safe parser) ---
+    // --- LOT (ONLY anchored at 10, stops at GS or control char) ---
     let lot = '';
     const lotIndex = data.indexOf('10');
 
@@ -108,17 +108,15 @@ function processScan(raw) {
         const GS = String.fromCharCode(29);
 
         while (i < data.length) {
-            const two = data.substring(i, i + 2);
+            const ch = data.charAt(i);
 
-            // Stop if GS (hidden separator)
-            if (data.charAt(i) === GS) break;
+            // stop at GS (hidden separator)
+            if (ch === GS) break;
 
-            // Stop if next AI appears (17, 21, etc.)
-            if (/^\d{2}$/.test(two) && (two === '17' || two === '21' || two === '11' || two === '01')) {
-                break;
-            }
+            // stop at any control/non-printable char
+            if (ch.charCodeAt(0) < 32) break;
 
-            lot += data.charAt(i);
+            lot += ch;
             i++;
         }
     }
