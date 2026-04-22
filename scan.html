@@ -59,12 +59,11 @@
       }
 
       return audioCtx.resume().then(() => {
-        // 🔥 CRITICAL: force real sound output on gesture
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
 
         osc.frequency.value = 100;
-        gain.gain.value = 0.01; // almost silent but forces activation
+        gain.gain.value = 0.01;
 
         osc.connect(gain);
         gain.connect(audioCtx.destination);
@@ -109,7 +108,7 @@
     startCamera();
 
     // =========================
-    // SESSION START (IMPORTANT)
+    // SESSION START
     // =========================
     function startSession() {
       initAudioHard().then(() => {
@@ -144,22 +143,52 @@
     });
 
     // =========================
-    // PARSER
+    // 🔥 GS1-128 SAFE PARSER (UPDATED)
     // =========================
     function parseBarcode(text) {
       let lot = "";
       let exp = "";
 
-      const clean = text.replace(/\u001d/g, "").trim();
+      if (!text) return { lot, exp };
 
+      // normalize GS1 control characters
+      const clean = text
+        .replace(/\u001d/g, "")   // GS1 FNC1 separator
+        .replace(/\s/g, "")
+        .trim();
+
+      // =========================
+      // CASE 1: formatted (10)(17)
+      // =========================
       let lotMatch = clean.match(/\(10\)([^\(]+)/);
       let expMatch = clean.match(/\(17\)(\d{6})/);
 
-      if (!lotMatch) lotMatch = clean.match(/10([A-Za-z0-9\-]+)/);
-      if (!expMatch) expMatch = clean.match(/17(\d{6})/);
+      // =========================
+      // CASE 2: raw GS1-128 (no brackets)
+      // =========================
+      if (!lotMatch) {
+        lotMatch = clean.match(/10([A-Za-z0-9\-]{1,20})17/);
+      }
 
-      if (lotMatch) lot = lotMatch[1].split("17")[0].trim();
-      if (expMatch) exp = formatDate(expMatch[1]);
+      if (!expMatch) {
+        expMatch = clean.match(/17(\d{6})/);
+      }
+
+      // =========================
+      // CASE 3: fallback split logic
+      // =========================
+      if (!lotMatch && clean.includes("10") && clean.includes("17")) {
+        const split = clean.split("17");
+        if (split[0].includes("10")) {
+          lot = split[0].replace("10", "").trim();
+        }
+      } else if (lotMatch) {
+        lot = lotMatch[1].trim();
+      }
+
+      if (expMatch) {
+        exp = formatDate(expMatch[1]);
+      }
 
       return { lot, exp };
     }
@@ -204,7 +233,6 @@
 
       sessionStorage.setItem(key, JSON.stringify(session));
 
-      // 🔊 NOW GUARANTEED
       beep();
     }
 
