@@ -1,329 +1,41 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventory Baseline - Sign In</title>
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js"></script>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .container {
-            background: white;
-            border-radius: 10px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            padding: 40px;
-            max-width: 400px;
-            width: 100%;
-        }
-
-        .logo {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        .logo h1 {
-            font-size: 2em;
-            color: #333;
-            margin-bottom: 5px;
-        }
-
-        .logo p {
-            color: #666;
-            font-size: 0.95em;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 500;
-        }
-
-        input {
-            width: 100%;
-            padding: 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 6px;
-            font-size: 1em;
-            transition: border-color 0.3s ease;
-        }
-
-        input:focus {
-            outline: none;
-            border-color: #667eea;
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 1em;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-
-        button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
-        }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .link-group {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .link-group a {
-            color: #667eea;
-            text-decoration: none;
-            font-weight: 500;
-            cursor: pointer;
-        }
-
-        .link-group a:hover {
-            text-decoration: underline;
-        }
-
-        .error {
-            background: #ffebee;
-            border: 1px solid #f44336;
-            color: #c62828;
-            padding: 12px;
-            margin-bottom: 20px;
-            border-radius: 6px;
-            display: none;
-        }
-
-        .error.show {
-            display: block;
-        }
-
-        .success {
-            background: #e8f5e9;
-            border: 1px solid #4caf50;
-            color: #2e7d32;
-            padding: 12px;
-            margin-bottom: 20px;
-            border-radius: 6px;
-            display: none;
-        }
-
-        .success.show {
-            display: block;
-        }
-
-        .form-toggle {
-            display: none;
-        }
-
-        .form-toggle.active {
-            display: block;
-        }
-
-        .divider {
-            text-align: center;
-            color: #999;
-            margin: 20px 0;
-        }
-
-        @media (max-width: 480px) {
-            .container {
-                padding: 30px 20px;
-            }
-
-            .logo h1 {
-                font-size: 1.5em;
-            }
-        }
-    </style>
+    <title>Cycle Count App</title>
 </head>
 <body>
-    <div class="container">
-        <div class="logo">
-            <h1>📊 Inventory Baseline</h1>
-            <p>Manage your inventory</p>
-        </div>
 
-        <div id="errorMessage" class="error"></div>
-        <div id="successMessage" class="success"></div>
+    <h1>Menu</h1>
 
-        <!-- Sign In Form -->
-        <div id="signinForm" class="form-toggle active">
-            <form id="signinFormElement">
-                <div class="form-group">
-                    <label for="signinEmail">Email</label>
-                    <input type="email" id="signinEmail" required placeholder="Enter your email">
-                </div>
-                <div class="form-group">
-                    <label for="signinPassword">Password</label>
-                    <input type="password" id="signinPassword" required placeholder="Enter your password">
-                </div>
-                <button type="submit">Sign In</button>
-            </form>
-            <div class="link-group">
-                Don't have an account? <a onclick="toggleForms()">Create one</a>
-            </div>
-        </div>
+    <button onclick="addTable()">Add New Table</button>
 
-        <!-- Sign Up Form -->
-        <div id="signupForm" class="form-toggle">
-            <form id="signupFormElement">
-                <div class="form-group">
-                    <label for="signupName">Full Name</label>
-                    <input type="text" id="signupName" required placeholder="Enter your full name">
-                </div>
-                <div class="form-group">
-                    <label for="signupEmail">Email</label>
-                    <input type="email" id="signupEmail" required placeholder="Enter your email">
-                </div>
-                <div class="form-group">
-                    <label for="signupPassword">Password</label>
-                    <input type="password" id="signupPassword" required placeholder="Create a password (min 6 characters)">
-                </div>
-                <div class="form-group">
-                    <label for="signupConfirmPassword">Confirm Password</label>
-                    <input type="password" id="signupConfirmPassword" required placeholder="Confirm your password">
-                </div>
-                <button type="submit">Create Account</button>
-            </form>
-            <div class="link-group">
-                Already have an account? <a onclick="toggleForms()">Sign in</a>
-            </div>
-        </div>
+    <h2>Table Area</h2>
+    <div id="tableArea">
+        <!-- Tables will appear here -->
     </div>
 
     <script>
-        // REPLACE THE firebaseConfig BELOW WITH YOUR OWN CONFIG FROM FIREBASE CONSOLE
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
+        function addTable() {
+            const tableArea = document.getElementById("tableArea");
 
-        // Initialize Firebase
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.firestore();
+            const table = document.createElement("table");
+            table.border = "1";
 
-        // Check if already logged in
-        auth.onAuthStateChanged((user) => {
-            if (user) {
-                window.location.href = 'dashboard.html';
-            }
-        });
+            for (let i = 0; i < 3; i++) {
+                const row = document.createElement("tr");
 
-        // Form toggle
-        function toggleForms() {
-            document.getElementById('signinForm').classList.toggle('active');
-            document.getElementById('signupForm').classList.toggle('active');
-            hideMessages();
-        }
-
-        // Message handlers
-        function showError(message) {
-            const errorEl = document.getElementById('errorMessage');
-            errorEl.textContent = message;
-            errorEl.classList.add('show');
-        }
-
-        function showSuccess(message) {
-            const successEl = document.getElementById('successMessage');
-            successEl.textContent = message;
-            successEl.classList.add('show');
-        }
-
-        function hideMessages() {
-            document.getElementById('errorMessage').classList.remove('show');
-            document.getElementById('successMessage').classList.remove('show');
-        }
-
-        // Sign in handler
-        document.getElementById('signinFormElement').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            try {
-                const email = document.getElementById('signinEmail').value;
-                const password = document.getElementById('signinPassword').value;
-
-                const result = await auth.signInWithEmailAndPassword(email, password);
-                showSuccess('Signing in...');
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html';
-                }, 500);
-            } catch (error) {
-                showError(error.message);
-            }
-        });
-
-        // Sign up handler
-        document.getElementById('signupFormElement').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            try {
-                const name = document.getElementById('signupName').value;
-                const email = document.getElementById('signupEmail').value;
-                const password = document.getElementById('signupPassword').value;
-                const confirmPassword = document.getElementById('signupConfirmPassword').value;
-
-                if (password !== confirmPassword) {
-                    throw new Error('Passwords do not match');
+                for (let j = 0; j < 3; j++) {
+                    const cell = document.createElement("td");
+                    cell.textContent = "Item";
+                    row.appendChild(cell);
                 }
 
-                if (password.length < 6) {
-                    throw new Error('Password must be at least 6 characters');
-                }
-
-                // Create user account
-                const result = await auth.createUserWithEmailAndPassword(email, password);
-                
-                // Store user profile in Firestore
-                await db.collection('users').doc(result.user.uid).set({
-                    name: name,
-                    email: email,
-                    createdAt: new Date().toISOString()
-                });
-
-                showSuccess('Account created! Signing in...');
-                
-                setTimeout(() => {
-                    window.location.href = 'dashboard.html';
-                }, 500);
-            } catch (error) {
-                showError(error.message);
+                table.appendChild(row);
             }
-        });
+
+            tableArea.appendChild(table);
+        }
     </script>
+
 </body>
 </html>
