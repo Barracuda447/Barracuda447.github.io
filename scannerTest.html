@@ -3,104 +3,126 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scanner Test</title>
+    <title>Scanner Steps</title>
+    <style>
+        .step { display: none; }
+        .active { display: block; }
+    </style>
 </head>
 <body>
 
-    <button onclick="window.location.href='index.html'">Go Back to Index</button>
+    <h2 id="title">Step 1: Enter SKU</h2>
+
+    <!-- STEP 1 -->
+    <div id="step1" class="step active">
+        <input type="text" id="sku" placeholder="Enter SKU">
+        <br><br>
+        <button onclick="nextStep(2)">Next</button>
+    </div>
+
+    <!-- STEP 2 -->
+    <div id="step2" class="step">
+        <p>Scan LOT barcode</p>
+        <input type="text" id="lotScan" autofocus>
+    </div>
+
+    <!-- STEP 3 -->
+    <div id="step3" class="step">
+        <p>Scan EXP barcode</p>
+        <input type="text" id="expScan">
+    </div>
+
+    <!-- STEP 4 -->
+    <div id="step4" class="step">
+        <p>Enter Quantity</p>
+        <input type="number" id="quantity">
+        <br><br>
+        <button onclick="submitForm()">Submit</button>
+    </div>
+
     <br><br>
 
-    <label for="sku">SKU (type manually):</label>
-    <input type="text" id="sku" name="sku">
-    <br><br>
-
-    <label for="lot">LOT:</label>
-    <input type="text" id="lot" name="lot">
-    <br><br>
-
-    <label for="expiration">Expiration Date:</label>
-    <input type="date" id="expiration" name="expiration">
-    <br><br>
-
-    <label for="quantity">Quantity:</label>
-    <input type="number" id="quantity" name="quantity">
-    <br><br>
-
-    <button type="submit">Submit</button>
+    <h3>Collected Data:</h3>
+    SKU: <span id="outSku"></span><br>
+    LOT: <span id="outLot"></span><br>
+    EXP: <span id="outExp"></span><br>
+    QTY: <span id="outQty"></span>
 
     <script>
-        const lotInput = document.getElementById('lot');
-        const expirationInput = document.getElementById('expiration');
-        const quantityInput = document.getElementById('quantity');
+        let currentStep = 1;
 
-        let buffer = '';
-        let lastKeyTime = Date.now();
+        function nextStep(step) {
+            document.getElementById('step' + currentStep).classList.remove('active');
+            currentStep = step;
+            document.getElementById('step' + currentStep).classList.add('active');
 
-        document.addEventListener('keydown', function(event) {
-            const now = Date.now();
+            updateTitle();
 
-            // If typing is slow, reset buffer (human typing)
-            if (now - lastKeyTime > 100) {
-                buffer = '';
-            }
+            // focus next input
+            const input = document.querySelector('#step' + currentStep + ' input');
+            if (input) input.focus();
+        }
 
-            lastKeyTime = now;
+        function updateTitle() {
+            const titles = {
+                1: "Step 1: Enter SKU",
+                2: "Step 2: Scan LOT",
+                3: "Step 3: Scan Expiration",
+                4: "Step 4: Enter Quantity"
+            };
+            document.getElementById('title').innerText = titles[currentStep];
+        }
 
-            if (event.key === 'Enter') {
-                processScan(buffer.trim());
-                buffer = '';
-                return;
-            }
+        // --- LOT SCAN ---
+        document.getElementById('lotScan').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                let data = this.value.trim();
 
-            // Ignore modifier keys
-            if (event.key.length === 1) {
-                buffer += event.key;
+                // Extract LOT (AI 10)
+                let match = data.match(/10([^\x1D]+)/);
+                let lot = match ? match[1] : data;
+
+                document.getElementById('outLot').innerText = lot;
+
+                this.value = '';
+                nextStep(3);
             }
         });
 
-        function processScan(data) {
-            console.log("Scanned:", data);
-            console.log("Char codes:", [...data].map(c => c.charCodeAt(0)));
+        // --- EXP SCAN ---
+        document.getElementById('expScan').addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                let data = this.value.trim();
 
-            // --- EXP (17 = YYMMDD) ---
-            const expMatch = data.match(/17(\d{6})/);
-            if (expMatch) {
-                const raw = expMatch[1];
-                const year = '20' + raw.slice(0, 2);
-                const month = raw.slice(2, 4);
-                const day = raw.slice(4, 6);
-                expirationInput.value = `${year}-${month}-${day}`;
-            }
+                // Extract EXP (AI 17)
+                let match = data.match(/17(\d{6})/);
+                let formatted = '';
 
-            // --- LOT (10 variable length) ---
-            let lot = '';
-            const lotStart = data.indexOf('10');
-
-            if (lotStart !== -1) {
-                let lotEnd = data.length;
-
-                // Stop at GS (ASCII 29) if present
-                const gsChar = String.fromCharCode(29);
-                const gsIndex = data.indexOf(gsChar, lotStart);
-                if (gsIndex !== -1) {
-                    lotEnd = gsIndex;
+                if (match) {
+                    let raw = match[1];
+                    formatted = `20${raw.slice(0,2)}-${raw.slice(2,4)}-${raw.slice(4,6)}`;
                 } else {
-                    // Otherwise stop at next AI
-                    const nextAI = data.slice(lotStart + 2).match(/(17|01|21)/);
-                    if (nextAI) {
-                        lotEnd = lotStart + 2 + nextAI.index;
-                    }
+                    formatted = data;
                 }
 
-                lot = data.slice(lotStart + 2, lotEnd);
-            }
+                document.getElementById('outExp').innerText = formatted;
 
-            if (lot) {
-                lotInput.value = lot;
+                this.value = '';
+                nextStep(4);
             }
+        });
 
-            // Move to quantity for fast entry
-            quantityInput.focus();
+        function submitForm() {
+            const sku = document.getElementById('sku').value;
+            const qty = document.getElementById('quantity').value;
+
+            document.getElementById('outSku').innerText = sku;
+            document.getElementById('outQty').innerText = qty;
+
+            alert("Submitted!");
+
+            // reset
+            location.reload();
         }
     </script>
 
