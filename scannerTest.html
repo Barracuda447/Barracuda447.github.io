@@ -24,7 +24,6 @@
 
 <div id="scanSection" class="hidden">
     <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
-    <p>Scan continuously...</p>
     <input type="text" id="scanInput" autofocus>
 </div>
 
@@ -62,7 +61,7 @@ function startScanning() {
     scanInput.focus();
 }
 
-// --- auto scan detection ---
+// --- scan detection ---
 scanInput.addEventListener('input', function () {
     buffer = scanInput.value;
 
@@ -82,48 +81,53 @@ function processScan(raw) {
 
     let data = raw;
 
-    // =========================
-    // STEP 1: HANDLE GTIN MODE
-    // =========================
-    const isGTIN = /^01\d{14}/.test(data);
-
-    if (isGTIN) {
-        console.log("GTIN detected");
+    // --- GTIN removal ---
+    if (/^01\d{14}/.test(data)) {
         data = data.slice(16);
     }
 
     console.log("WORKING:", data);
 
-    // =========================
-    // EXP (17)
-    // =========================
+    const GS = String.fromCharCode(29);
+
     let exp = '';
-    const expMatch = data.match(/17(\d{6})/);
-
-    if (expMatch) {
-        const r = expMatch[1];
-        exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
-    }
-
-    // =========================
-    // LOT (10 anchor, GS safe)
-    // =========================
     let lot = '';
-    const lotIndex = data.indexOf('10');
 
-    if (lotIndex !== -1) {
-        let i = lotIndex + 2;
+    // =========================
+    // STREAM PARSER
+    // =========================
+    for (let i = 0; i < data.length; i++) {
 
-        const GS = String.fromCharCode(29);
+        // --- EXP (17 + 6 digits) ---
+        if (data[i] === '1' && data[i+1] === '7') {
+            const candidate = data.slice(i + 2, i + 8);
 
-        while (i < data.length) {
-            const ch = data.charAt(i);
+            if (/^\d{6}$/.test(candidate)) {
+                const r = candidate;
+                exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
+                i += 7;
+                continue;
+            }
+        }
 
-            if (ch === GS) break; // GS separator
-            if (ch.charCodeAt(0) < 32) break; // control char
+        // --- LOT (10 + variable) ---
+        if (data[i] === '1' && data[i+1] === '0') {
+            i += 2;
 
-            lot += ch;
-            i++;
+            while (i < data.length) {
+                const ch = data[i];
+
+                // stop on GS or control char
+                if (ch === GS || ch.charCodeAt(0) < 32) break;
+
+                // stop if we hit a new AI safely (17 or 10 again)
+                if (data[i] === '1' && (data[i+1] === '7' || data[i+1] === '0')) break;
+
+                lot += ch;
+                i++;
+            }
+
+            continue;
         }
     }
 
