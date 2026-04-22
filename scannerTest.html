@@ -6,11 +6,16 @@
     <title>Scanner Test</title>
 </head>
 <body>
+
     <button onclick="window.location.href='index.html'">Go Back to Index</button>
     <br><br>
 
-    <label for="sku">Scan Barcode:</label>
-    <input type="text" id="sku" name="sku" autofocus>
+    <label for="sku">SKU (type manually):</label>
+    <input type="text" id="sku" name="sku">
+    <br><br>
+
+    <label for="scan">Scan Barcode:</label>
+    <input type="text" id="scan" name="scan" autofocus>
     <br><br>
 
     <label for="lot">LOT:</label>
@@ -28,42 +33,61 @@
     <button type="submit">Submit</button>
 
     <script>
-        const skuInput = document.getElementById('sku');
+        const scanInput = document.getElementById('scan');
         const lotInput = document.getElementById('lot');
         const expirationInput = document.getElementById('expiration');
 
-        skuInput.addEventListener('keydown', function(event) {
+        scanInput.addEventListener('keydown', function(event) {
             if (event.key === 'Enter') {
-                const scannedData = skuInput.value.trim();
+                const data = scanInput.value.trim();
 
-                console.log("Raw scan:", scannedData);
-                console.log("Char codes:", [...scannedData].map(c => c.charCodeAt(0)));
+                console.log("Scan:", data);
+                console.log("Char codes:", [...data].map(c => c.charCodeAt(0)));
 
-                // --- LOT (AI 10, variable length) ---
-                // Stops at GS (ASCII 29) if present
-                let lotMatch = scannedData.match(/10([^\x1D]+)/);
-                if (lotMatch) {
-                    lotInput.value = lotMatch[1];
-                }
-
-                // --- EXPIRATION (AI 17, fixed YYMMDD) ---
-                let expMatch = scannedData.match(/17(\d{6})/);
+                // --- Extract EXP (AI 17 = YYMMDD) ---
+                const expMatch = data.match(/17(\d{6})/);
                 if (expMatch) {
                     const raw = expMatch[1];
-                    const year = '20' + raw.substring(0, 2);
-                    const month = raw.substring(2, 4);
-                    const day = raw.substring(4, 6);
-
+                    const year = '20' + raw.slice(0, 2);
+                    const month = raw.slice(2, 4);
+                    const day = raw.slice(4, 6);
                     expirationInput.value = `${year}-${month}-${day}`;
                 }
 
-                // Optional: clear scan field after processing
-                skuInput.value = '';
+                // --- Extract LOT (AI 10, variable length) ---
+                // Stops at GS (ASCII 29) OR next AI like 17
+                let lot = '';
 
-                // Optional: move cursor to next field
-                lotInput.focus();
+                const gsIndex = data.indexOf(String.fromCharCode(29));
+                const lotStart = data.indexOf('10');
+
+                if (lotStart !== -1) {
+                    let lotEnd = data.length;
+
+                    if (gsIndex !== -1 && gsIndex > lotStart) {
+                        lotEnd = gsIndex;
+                    } else {
+                        const nextAI = data.slice(lotStart + 2).match(/(17|01|21)/);
+                        if (nextAI) {
+                            lotEnd = lotStart + 2 + nextAI.index;
+                        }
+                    }
+
+                    lot = data.slice(lotStart + 2, lotEnd);
+                }
+
+                if (lot) {
+                    lotInput.value = lot;
+                }
+
+                // Clear scan box for next scan
+                scanInput.value = '';
+
+                // Move to quantity for fast workflow
+                document.getElementById('quantity').focus();
             }
         });
     </script>
+
 </body>
 </html>
