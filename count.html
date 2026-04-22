@@ -22,7 +22,7 @@
       background: var(--bg);
       color: var(--text);
       padding: 14px;
-      padding-bottom: 120px; /* space for fixed buttons */
+      padding-bottom: 120px;
     }
 
     h2 {
@@ -63,7 +63,6 @@
       background: rgba(255,255,255,0.03);
     }
 
-    /* Bottom action buttons */
     #addItemBtn, #completeBtn {
       position: fixed;
       left: 0;
@@ -90,7 +89,6 @@
       transform: scale(0.99);
     }
 
-    /* Mobile card mode (visual only, no JS changes) */
     @media (max-width: 700px) {
       table {
         min-width: 100%;
@@ -123,7 +121,6 @@
         text-transform: uppercase;
       }
     }
-
   </style>
 </head>
 
@@ -194,6 +191,9 @@
         "&bin=" + encodeURIComponent(bin || "");
     }
 
+    // =========================
+    // FIXED FUNCTION ONLY
+    // =========================
     function completeCount() {
       const key = "cycleCountData";
       const completedKey = "completedCounts";

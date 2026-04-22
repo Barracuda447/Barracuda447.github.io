@@ -199,8 +199,7 @@
       let expMatch = clean.match(/\(17\)(\d{6})/);
 
       if (!lotMatch) {
-        lotMatch = clean.match(/10([A-Za-z0-9\-]{1,20})17/);
-      }
+        lotMatch = clean.match(/(?:^|[^0-9])10([A-Za-z0-9\-]{1,20})17/);      }
 
       if (!expMatch) {
         expMatch = clean.match(/17(\d{6})/);

@@ -172,7 +172,7 @@
   <div class="page-info" id="pageInfo"></div>
 
   <button class="btn" onclick="goToWarehouse()">Create New Count</button>
-
+  <button class="btn" onclick="goToExport()">Export & Email</button>
   <script>
     let allData = [];
     let currentPage = 1;
@@ -180,6 +180,10 @@
 
     function goToWarehouse() {
       window.location.href = "warehouse.html";
+    }
+
+    function goToExport() {
+      window.location.href = "export.html";
     }
 
     function loadCompleted() {

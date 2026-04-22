@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Export Cycle Count</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, Arial;
+      background: #0f1115;
+      color: #e6e6e6;
+      padding: 16px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .card {
+      background: #171a21;
+      border: 1px solid #2a2f3a;
+      border-radius: 12px;
+      padding: 16px;
+      margin-bottom: 12px;
+    }
+
+    input {
+      width: 100%;
+      padding: 12px;
+      border-radius: 10px;
+      border: 1px solid #2a2f3a;
+      background: #0f1115;
+      color: white;
+      margin-top: 8px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 12px;
+      border: none;
+      border-radius: 12px;
+      background: #4f8cff;
+      color: white;
+      font-weight: bold;
+      font-size: 15px;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .secondary {
+      background: #2a2f3a;
+    }
+
+    .small {
+      font-size: 12px;
+      color: #9aa4b2;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h2>Export Cycle Count</h2>
+
+  <div class="card">
+    <label>Email to send export to:</label>
+    <input type="email" id="emailInput" placeholder="name@example.com" />
+    
+    <button onclick="exportCSV()">Download Excel File</button>
+    <button class="secondary" onclick="sendEmail()">Send to Email</button>
+
+    <div class="small">
+      Note: Email sending requires a backend service. Download works immediately.
+    </div>
+  </div>
+
+  <div class="card">
+    <strong>Preview Count:</strong>
+    <div id="countInfo" class="small"></div>
+  </div>
+
+<script>
+  let data = [];
+
+  function loadData() {
+    data = JSON.parse(localStorage.getItem("completedCounts")) || [];
+    document.getElementById("countInfo").innerText =
+      `${data.length} records ready for export`;
+  }
+
+  function convertToCSV() {
+    const header = ["Warehouse","Bin","Item","LOT","Expiry","On Hand"];
+    const rows = data.map(d => [
+      d.warehouse,
+      d.bin,
+      d.sku,
+      d.lot,
+      d.expiry,
+      d.qty
+    ]);
+
+    let csv = header.join(",") + "\n";
+    rows.forEach(r => {
+      csv += r.map(v => `"${v ?? ""}"`).join(",") + "\n";
+    });
+
+    return csv;
+  }
+
+  function exportCSV() {
+    const csv = convertToCSV();
+    const blob = new Blob([csv], { type: "text/csv" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "cycle-count-export.csv";
+    a.click();
+
+    URL.revokeObjectURL(url);
+  }
+
+  function sendEmail() {
+    const email = document.getElementById("emailInput").value;
+
+    if (!email) {
+      alert("Please enter an email address.");
+      return;
+    }
+
+    // Placeholder (needs backend)
+    alert(
+      "Email feature requires a backend.\n\n" +
+      "For now, download the file and attach it manually.\n\n" +
+      "Would you like me to add a Node.js email sender for this?"
+    );
+  }
+
+  loadData();
+</script>
+
+</body>
+</html>
