@@ -15,7 +15,7 @@
 
     <h2>Scan Items</h2>
 
-    <!-- SKU ENTRY -->
+    <!-- SKU -->
     <div id="skuSection">
         <label>Enter SKU:</label><br>
         <input type="text" id="sku">
@@ -23,14 +23,14 @@
         <button onclick="startScanning()">Start Scanning</button>
     </div>
 
-    <!-- SCANNING -->
+    <!-- SCAN -->
     <div id="scanSection" class="hidden">
         <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
         <p>Scan continuously...</p>
         <input type="text" id="scanInput" autofocus>
     </div>
 
-    <!-- RESULTS -->
+    <!-- TABLE -->
     <table id="resultTable" class="hidden">
         <thead>
             <tr>
@@ -65,51 +65,61 @@
             scanInput.focus();
         }
 
+        // --- NO ENTER REQUIRED: scan burst detection ---
         scanInput.addEventListener('input', function() {
             buffer = scanInput.value;
 
-            // Reset timer on every keystroke
             clearTimeout(timer);
 
             timer = setTimeout(() => {
                 processScan(buffer.trim());
                 buffer = '';
                 scanInput.value = '';
-            }, 100); // adjust if needed (80–150ms typical)
+            }, 100); // adjust 80–150ms if needed
         });
 
         function processScan(raw) {
             if (!raw) return;
 
-            console.log("SCAN:", raw);
+            console.log("RAW:", raw);
 
             let working = raw;
 
-            // Remove GTIN
-            if (working.length >= 20 && working.startsWith('01')) {
+            // --- Remove GTIN if present (01 + 14 digits) ---
+            if (working.startsWith('01') && working.length >= 20) {
                 working = working.slice(16);
             }
 
-            // --- EXP ---
+            console.log("WORKING:", working);
+
+            // --- EXP (17) ---
             let exp = '';
             const expMatch = working.match(/17(\d{6})/);
+
             if (expMatch) {
                 const r = expMatch[1];
                 exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
             }
 
-            // --- LOT ---
+            // --- LOT (MUST start at 10, stop at next AI) ---
             let lot = '';
-            const lotStart = working.indexOf('10');
-            const expStart = working.indexOf('17');
 
-            if (lotStart !== -1) {
-                if (expStart !== -1 && expStart > lotStart) {
-                    lot = working.slice(lotStart + 2, expStart);
+            const lotIndex = working.indexOf('10');
+
+            if (lotIndex !== -1) {
+                let after = working.slice(lotIndex + 2);
+
+                // Find next AI (any 2-digit AI like 17, 21, 11, etc.)
+                const nextAI = after.search(/\d{2}(?=\d)/);
+
+                if (nextAI !== -1) {
+                    lot = after.slice(0, nextAI);
                 } else {
-                    lot = working.slice(lotStart + 2);
+                    lot = after;
                 }
             }
+
+            console.log("LOT:", lot, "EXP:", exp);
 
             if (!lot || !exp) {
                 console.log("Parse failed:", raw);
