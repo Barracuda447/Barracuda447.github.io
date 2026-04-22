@@ -11,6 +11,12 @@
       border: 1px solid #ccc;
     }
 
+    .hint {
+      margin-top: 10px;
+      font-size: 14px;
+      color: #555;
+    }
+
     button {
       padding: 12px;
       margin-top: 10px;
@@ -20,12 +26,6 @@
       border: none;
       font-size: 16px;
     }
-
-    .hint {
-      margin-top: 10px;
-      font-size: 14px;
-      color: #555;
-    }
   </style>
 </head>
 <body>
@@ -34,10 +34,10 @@
 
   <video id="video" autoplay></video>
 
-  <button onclick="initAudio()">Start Scanner (Enable Sound)</button>
+  <button onclick="scanNow()">SCAN</button>
 
   <p class="hint">
-    Auto-scan enabled — just point camera at barcode
+    Tap SCAN to capture barcode from camera
   </p>
 
   <button onclick="goToResults()">View Results</button>
@@ -53,16 +53,7 @@
 
     let codeReader;
     let latestFrame = null;
-
-    // =========================
-    // SCAN LOCK (ONLY SAFETY LAYER)
-    // =========================
-    let scanLocked = false;
-
-    function lockScan(ms = 900) {
-      scanLocked = true;
-      setTimeout(() => scanLocked = false, ms);
-    }
+    let scanning = false;
 
     // =========================
     // AUDIO
@@ -112,21 +103,25 @@
     startCamera();
 
     // =========================
-    // AUTO-SCAN LOOP
+    // SCAN BUTTON ONLY
     // =========================
-    function autoScanLoop() {
-      if (!scanLocked && latestFrame) {
-        handleScan(latestFrame);
-        lockScan();
-      }
+    function scanNow() {
+      if (scanning) return;
+      if (!latestFrame) return;
 
-      requestAnimationFrame(autoScanLoop);
+      scanning = true;
+
+      initAudio().then(() => {
+        handleScan(latestFrame);
+      });
+
+      setTimeout(() => {
+        scanning = false;
+      }, 500);
     }
 
-    requestAnimationFrame(autoScanLoop);
-
     // =========================
-    // GS1 PARSER (UNCHANGED BUT SAFE)
+    // GS1 PARSER (SAFE)
     // =========================
     function parseBarcode(text) {
       let lot = "";
@@ -172,7 +167,7 @@
     }
 
     // =========================
-    // HANDLE SCAN
+    // HANDLE SCAN (MERGE LOGIC)
     // =========================
     function handleScan(text) {
       const { lot, exp } = parseBarcode(text);
