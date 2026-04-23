@@ -55,9 +55,10 @@ button {
     border-radius: 8px;
 }
 
-#manualBox input, #manualBox select {
+#manualBox input, 
+#manualBox select {
     width: 100%;
-    margin: 5px 0;
+    margin: 6px 0;
     padding: 8px;
 }
 </style>
@@ -113,9 +114,13 @@ button {
 
         <input id="mLot" placeholder="LOT">
 
-        <!-- EXPIRY DROPDOWNS -->
+        <!-- YEAR -->
         <select id="mYear"></select>
+
+        <!-- MONTH -->
         <select id="mMonth"></select>
+
+        <!-- DAY -->
         <select id="mDay"></select>
 
         <input id="mQty" type="number" placeholder="Quantity">
@@ -139,33 +144,39 @@ let lastInputTime = Date.now();
 let currentSKU = "";
 
 // =========================
-// INIT DROPDOWNS
+// BUILD DATE DROPDOWNS
 // =========================
-(function initDateDropdowns() {
+(function initDropdowns() {
     const year = document.getElementById("mYear");
     const month = document.getElementById("mMonth");
     const day = document.getElementById("mDay");
 
-    const currentYear = new Date().getFullYear();
+    const now = new Date();
+    const currentYear = now.getFullYear();
 
-    // Years (current + 10 forward)
+    // Years (current → +10)
+    year.innerHTML = `<option value="">Year</option>`;
     for (let y = currentYear; y <= currentYear + 10; y++) {
         year.innerHTML += `<option value="${y}">${y}</option>`;
     }
 
     // Months
+    month.innerHTML = `<option value="">Month</option>`;
     for (let m = 1; m <= 12; m++) {
-        month.innerHTML += `<option value="${String(m).padStart(2,'0')}">${m}</option>`;
+        const mm = String(m).padStart(2, '0');
+        month.innerHTML += `<option value="${mm}">${mm}</option>`;
     }
 
     // Days
+    day.innerHTML = `<option value="">Day</option>`;
     for (let d = 1; d <= 31; d++) {
-        day.innerHTML += `<option value="${String(d).padStart(2,'0')}">${d}</option>`;
+        const dd = String(d).padStart(2, '0');
+        day.innerHTML += `<option value="${dd}">${dd}</option>`;
     }
 })();
 
 // =========================
-// START
+// START SCANNING
 // =========================
 function startScanning() {
     const sku = document.getElementById('sku').value.trim();
@@ -223,7 +234,7 @@ function completeBin() {
 }
 
 // =========================
-// MANUAL MODAL
+// MANUAL ENTRY
 // =========================
 function openManual() {
     document.getElementById('manualModal').style.display = 'flex';
@@ -234,7 +245,7 @@ function closeManual() {
 }
 
 // =========================
-// ADD MANUAL ENTRY
+// ADD MANUAL ITEM
 // =========================
 function addManual() {
     const lot = document.getElementById('mLot').value.trim();
@@ -244,8 +255,8 @@ function addManual() {
     const month = document.getElementById('mMonth').value;
     const day = document.getElementById('mDay').value;
 
-    if (!lot || !qty) {
-        alert("LOT and Quantity required");
+    if (!lot || !qty || !year || !month || !day) {
+        alert("Please fill LOT, quantity, and full expiration date");
         return;
     }
 
@@ -269,6 +280,10 @@ function addManual() {
 
     document.getElementById('mLot').value = '';
     document.getElementById('mQty').value = '';
+
+    document.getElementById('mYear').selectedIndex = 0;
+    document.getElementById('mMonth').selectedIndex = 0;
+    document.getElementById('mDay').selectedIndex = 0;
 }
 
 // =========================
