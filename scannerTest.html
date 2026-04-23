@@ -47,6 +47,9 @@ const scanInput = document.getElementById('scanInput');
 const tableBody = document.querySelector('#resultTable tbody');
 
 let dataStore = {};
+let buffer = '';
+let timer = null;
+let lastInputTime = Date.now();
 
 function startScanning() {
     const sku = document.getElementById('sku').value.trim();
@@ -61,59 +64,41 @@ function startScanning() {
 }
 
 // =========================
-// RELIABLE SCAN (ENTER-BASED)
+// BETTER SCAN DETECTION
 // =========================
-scanInput.addEventListener('keydown', function (e) {
-    if (e.key === 'Enter') {
-        e.preventDefault();
+scanInput.addEventListener('input', function () {
+    const now = Date.now();
+    const diff = now - lastInputTime;
+    lastInputTime = now;
 
-        let value = normalizeRaw(scanInput.value);
+    // If too slow → treat as manual typing → reset buffer
+    if (diff > 50) buffer = '';
 
-        if (value) {
-            processScan(value);
-        }
+    buffer += scanInput.value;
+    scanInput.value = '';
 
-        scanInput.value = '';
-    }
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+        processScan(buffer);
+        buffer = '';
+    }, 50);
 });
 
-// Always keep focus
-setInterval(() => {
-    if (document.activeElement !== scanInput) {
-        scanInput.focus();
-    }
-}, 500);
-
 // =========================
-// NORMALIZATION (KEY FIX)
-// =========================
-function normalizeRaw(raw) {
-    if (!raw) return '';
-
-    let GS = String.fromCharCode(29);
-
-    // Convert common scanner variations into GS
-    return raw
-        .replace(/\u001D/g, GS)
-        .replace(/\]/g, GS)
-        .replace(/~/g, GS)
-        .replace(/\s+/g, '')
-        .trim();
-}
-
-// =========================
-// GS1 PARSER (CONSISTENT)
+// GS1 PARSER
 // =========================
 function processScan(raw) {
+    if (!raw) return;
+
     console.log("RAW:", raw);
 
     const GS = String.fromCharCode(29);
 
     const AI_MAP = {
-        "01": { length: 14, fixed: true },
-        "17": { length: 6, fixed: true },
-        "10": { fixed: false },
-        "21": { fixed: false },
+        "01": { length: 14, fixed: true }, // GTIN
+        "17": { length: 6, fixed: true },  // Expiration
+        "10": { fixed: false },            // Lot
+        "21": { fixed: false },            // Serial (optional future use)
     };
 
     let i = 0;
@@ -123,7 +108,7 @@ function processScan(raw) {
         let ai = raw.substr(i, 2);
 
         if (!AI_MAP[ai]) {
-            i++;
+            i++; // skip unknown safely
             continue;
         }
 
@@ -135,23 +120,13 @@ function processScan(raw) {
             i += len;
         } else {
             let value = '';
-
-            while (i < raw.length) {
-                let ch = raw[i];
-
-                if (ch === GS) {
-                    i++;
-                    break;
-                }
-
-                let nextTwo = raw.substr(i, 2);
-                if (AI_MAP[nextTwo]) break;
-
-                value += ch;
+            while (i < raw.length && raw[i] !== GS) {
+                value += raw[i];
                 i++;
             }
-
             parsed[ai] = value;
+
+            if (raw[i] === GS) i++; // skip GS
         }
     }
 
@@ -160,25 +135,19 @@ function processScan(raw) {
     // =========================
     // FIELD EXTRACTION
     // =========================
-    let lot = (parsed["10"] || '').trim();
-    let expRaw = (parsed["17"] || '').trim();
+    let lot = parsed["10"] || '';
+    let expRaw = parsed["17"] || '';
 
     let exp = '';
-    if (/^\d{6}$/.test(expRaw)) {
+    if (expRaw.length === 6) {
         exp = `20${expRaw.slice(0,2)}-${expRaw.slice(2,4)}-${expRaw.slice(4,6)}`;
     }
 
     console.log("LOT:", lot, "EXP:", exp);
 
-    // ✅ UPDATED LOGIC: allow LOT-only scans
-    if (!lot) {
-        console.log("Parse failed (no LOT):", raw);
+    if (!lot || !exp) {
+        console.log("Parse failed:", raw);
         return;
-    }
-
-    // expiry can be blank
-    if (!exp) {
-        exp = '';
     }
 
     const key = lot + "|" + exp;
