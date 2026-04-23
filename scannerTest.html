@@ -71,7 +71,6 @@ scanInput.addEventListener('input', function () {
     const diff = now - lastInputTime;
     lastInputTime = now;
 
-    // If too slow → treat as manual typing → reset buffer
     if (diff > 50) buffer = '';
 
     buffer += scanInput.value;
@@ -85,7 +84,7 @@ scanInput.addEventListener('input', function () {
 });
 
 // =========================
-// GS1 PARSER
+// ORDERED GS1 PARSER
 // =========================
 function processScan(raw) {
     if (!raw) return;
@@ -93,56 +92,47 @@ function processScan(raw) {
     console.log("RAW:", raw);
 
     const GS = String.fromCharCode(29);
+    let working = raw;
 
-    const AI_MAP = {
-        "01": { length: 14, fixed: true }, // GTIN
-        "17": { length: 6, fixed: true },  // Expiration
-        "10": { fixed: false },            // Lot
-        "21": { fixed: false },            // Serial (optional future use)
-    };
-
-    let i = 0;
-    let parsed = {};
-
-    while (i < raw.length) {
-        let ai = raw.substr(i, 2);
-
-        if (!AI_MAP[ai]) {
-            i++; // skip unknown safely
-            continue;
-        }
-
-        i += 2;
-
-        if (AI_MAP[ai].fixed) {
-            const len = AI_MAP[ai].length;
-            parsed[ai] = raw.substr(i, len);
-            i += len;
-        } else {
-            let value = '';
-            while (i < raw.length && raw[i] !== GS) {
-                value += raw[i];
-                i++;
-            }
-            parsed[ai] = value;
-
-            if (raw[i] === GS) i++; // skip GS
-        }
-    }
-
-    console.log("PARSED:", parsed);
-
-    // =========================
-    // FIELD EXTRACTION
-    // =========================
-    let lot = parsed["10"] || '';
-    let expRaw = parsed["17"] || '';
-
+    let gtin = '';
     let exp = '';
-    if (expRaw.length === 6) {
-        exp = `20${expRaw.slice(0,2)}-${expRaw.slice(2,4)}-${expRaw.slice(4,6)}`;
+    let lot = '';
+
+    // 1. GTIN (01 + 14 digits) at start
+    if (working.startsWith('01') && working.length >= 16) {
+        gtin = working.substr(2, 14);
+        working = working.substr(16);
     }
 
+    // 2. Expiration (17 + 6 digits)
+    let expIndex = working.indexOf('17');
+    if (expIndex !== -1 && working.length >= expIndex + 8) {
+        const expRaw = working.substr(expIndex + 2, 6);
+
+        if (expRaw.length === 6) {
+            exp = `20${expRaw.slice(0,2)}-${expRaw.slice(2,4)}-${expRaw.slice(4,6)}`;
+        }
+
+        working =
+            working.substring(0, expIndex) +
+            working.substring(expIndex + 8);
+    }
+
+    // 3. Lot (10 variable)
+    let lotIndex = working.indexOf('10');
+    if (lotIndex !== -1) {
+        let i = lotIndex + 2;
+        let value = '';
+
+        while (i < working.length && working[i] !== GS) {
+            value += working[i];
+            i++;
+        }
+
+        lot = value;
+    }
+
+    console.log("GTIN:", gtin);
     console.log("LOT:", lot, "EXP:", exp);
 
     if (!lot || !exp) {
