@@ -114,13 +114,8 @@ button {
 
         <input id="mLot" placeholder="LOT">
 
-        <!-- YEAR -->
         <select id="mYear"></select>
-
-        <!-- MONTH -->
         <select id="mMonth"></select>
-
-        <!-- DAY -->
         <select id="mDay"></select>
 
         <input id="mQty" type="number" placeholder="Quantity">
@@ -143,20 +138,44 @@ let lastInputTime = Date.now();
 
 let currentSKU = "";
 
-// =========================
-// DATE VALIDATION (NEW - ONLY ADDITION)
-// =========================
-function isValidDate(y, m, d) {
-    const date = new Date(y, m - 1, d);
+/* =========================
+   STRICT DATE VALIDATION (REPLACED LOGIC)
+========================= */
+function isLeapYear(year) {
     return (
-        date.getFullYear() == y &&
-        date.getMonth() == m - 1 &&
-        date.getDate() == d
+        (year % 4 === 0 && year % 100 !== 0) ||
+        (year % 400 === 0)
     );
 }
 
+function isValidDate(y, m, d) {
+    y = Number(y);
+    m = Number(m);
+    d = Number(d);
+
+    const monthDays = {
+        1: 31,
+        2: isLeapYear(y) ? 29 : 28,
+        3: 31,
+        4: 30,
+        5: 31,
+        6: 30,
+        7: 31,
+        8: 31,
+        9: 30,
+        10: 31,
+        11: 30,
+        12: 31
+    };
+
+    if (!monthDays[m]) return false;
+    if (d < 1 || d > monthDays[m]) return false;
+
+    return true;
+}
+
 // =========================
-// BUILD DATE DROPDOWNS (ONLY CHANGE IS YEAR RANGE)
+// BUILD DATE DROPDOWNS (UNCHANGED)
 // =========================
 (function initDropdowns() {
     const year = document.getElementById("mYear");
@@ -166,20 +185,17 @@ function isValidDate(y, m, d) {
     const now = new Date();
     const currentYear = now.getFullYear();
 
-    // YEARS (FIXED: now allows expired items)
     year.innerHTML = `<option value="">Year</option>`;
     for (let y = currentYear - 3; y <= currentYear + 10; y++) {
         year.innerHTML += `<option value="${y}">${y}</option>`;
     }
 
-    // MONTHS
     month.innerHTML = `<option value="">Month</option>`;
     for (let m = 1; m <= 12; m++) {
         const mm = String(m).padStart(2, '0');
         month.innerHTML += `<option value="${mm}">${mm}</option>`;
     }
 
-    // DAYS
     day.innerHTML = `<option value="">Day</option>`;
     for (let d = 1; d <= 31; d++) {
         const dd = String(d).padStart(2, '0');
@@ -257,7 +273,7 @@ function closeManual() {
 }
 
 // =========================
-// ADD MANUAL ITEM (ONLY ADDITION = DATE CHECK)
+// ADD MANUAL ITEM (UNCHANGED EXCEPT VALIDATION NOW USES NEW SYSTEM)
 // =========================
 function addManual() {
     const lot = document.getElementById('mLot').value.trim();
@@ -276,7 +292,7 @@ function addManual() {
     const m = parseInt(month);
     const d = parseInt(day);
 
-    // STRICT REAL DATE VALIDATION (NEW)
+    // ✅ STRICT CALENDAR VALIDATION (REPLACED)
     if (!isValidDate(y, m, d)) {
         alert("Invalid calendar date (e.g. Feb 30 not allowed)");
         return;
