@@ -24,13 +24,13 @@ th {
 
 button {
     margin: 5px;
-    padding: 6px 10px;
+    padding: 8px 12px;
     cursor: pointer;
 }
 
-input {
-    width: 100%;
-    box-sizing: border-box;
+#status {
+    margin-top: 10px;
+    font-weight: bold;
 }
 </style>
 </head>
@@ -57,16 +57,22 @@ input {
 <tbody id="reviewBody"></tbody>
 </table>
 
+<button onclick="sendCycleToSheet()">Send Cycle to Google Sheet</button>
 <button onclick="finish()">Finish</button>
+
+<div id="status"></div>
 
 <script>
 
+// =========================
+// LOAD DATA
+// =========================
 let data = JSON.parse(localStorage.getItem("reviewData") || "[]");
 const tbody = document.getElementById("reviewBody");
+const status = document.getElementById("status");
 
-function save() {
-    localStorage.setItem("reviewData", JSON.stringify(data));
-}
+// 👉 PUT YOUR GOOGLE APPS SCRIPT URL HERE
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbzzujRdB2K3bbXUh4jq-ePIE7BpaPznvL-Al7WEAzqpvtG2HAcRU8n2BvreN6yB7NZQsQ/exec";
 
 // =========================
 // RENDER TABLE
@@ -82,14 +88,11 @@ function render() {
             <td>${row.cycle}</td>
             <td>${row.warehouse}</td>
             <td>${row.bin}</td>
-
             <td>${row.sku}</td>
             <td>${row.lot}</td>
             <td>${row.exp}</td>
             <td>${row.qty}</td>
-
             <td>
-                <button onclick="editRow(${index})">Edit</button>
                 <button onclick="deleteRow(${index})">Delete</button>
             </td>
         `;
@@ -105,39 +108,41 @@ function deleteRow(i) {
     if (!confirm("Delete this row?")) return;
 
     data.splice(i, 1);
-    save();
+    localStorage.setItem("reviewData", JSON.stringify(data));
     render();
 }
 
 // =========================
-// EDIT ROW
+// SEND FULL CYCLE TO SHEET
 // =========================
-function editRow(i) {
-    const row = data[i];
+async function sendCycleToSheet() {
+    if (!data.length) {
+        alert("No data to send.");
+        return;
+    }
 
-    const newSKU = prompt("SKU:", row.sku);
-    if (newSKU === null) return;
+    status.innerText = "Sending to Google Sheet...";
 
-    const newLot = prompt("Lot:", row.lot);
-    if (newLot === null) return;
+    try {
+        for (let item of data) {
+            await fetch(SHEET_URL, {
+                method: "POST",
+                body: JSON.stringify(item),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            });
+        }
 
-    const newExp = prompt("Expiration Date (YYYY-MM-DD):", row.exp);
-    if (newExp === null) return;
-
-    const newQty = prompt("On Hand:", row.qty);
-    if (newQty === null) return;
-
-    row.sku = newSKU.trim();
-    row.lot = newLot.trim();
-    row.exp = newExp.trim();
-    row.qty = parseInt(newQty);
-
-    save();
-    render();
+        status.innerText = "✅ Successfully sent to Google Sheet!";
+    } catch (err) {
+        console.log(err);
+        status.innerText = "❌ Error sending data.";
+    }
 }
 
 // =========================
-// FINISH
+// FINISH CYCLE
 // =========================
 function finish() {
     alert("Bin finalized.");
