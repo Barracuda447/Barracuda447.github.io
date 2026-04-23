@@ -6,10 +6,32 @@
 
 <style>
 body { font-family: Arial; }
-table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-th, td { border: 1px solid #ccc; padding: 8px; }
-th { background: #f2f2f2; }
-button { margin-top: 15px; padding: 10px 15px; }
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 20px;
+}
+
+th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+}
+
+th {
+    background: #f2f2f2;
+}
+
+button {
+    margin: 5px;
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+input {
+    width: 100%;
+    box-sizing: border-box;
+}
 </style>
 </head>
 
@@ -28,6 +50,7 @@ button { margin-top: 15px; padding: 10px 15px; }
     <th>Lot</th>
     <th>Expiration Date</th>
     <th>On Hand</th>
+    <th>Actions</th>
 </tr>
 </thead>
 
@@ -37,31 +60,94 @@ button { margin-top: 15px; padding: 10px 15px; }
 <button onclick="finish()">Finish</button>
 
 <script>
-const data = JSON.parse(localStorage.getItem("reviewData") || "[]");
+
+let data = JSON.parse(localStorage.getItem("reviewData") || "[]");
 const tbody = document.getElementById("reviewBody");
 
-data.forEach(row => {
-    const tr = document.createElement("tr");
+function save() {
+    localStorage.setItem("reviewData", JSON.stringify(data));
+}
 
-    tr.innerHTML = `
-        <td>${row.timestamp}</td>
-        <td>${row.cycle}</td>
-        <td>${row.warehouse}</td>
-        <td>${row.bin}</td>
-        <td>${row.sku}</td>
-        <td>${row.lot}</td>
-        <td>${row.exp}</td>
-        <td>${row.qty}</td>
-    `;
+// =========================
+// RENDER TABLE
+// =========================
+function render() {
+    tbody.innerHTML = '';
 
-    tbody.appendChild(tr);
-});
+    data.forEach((row, index) => {
+        const tr = document.createElement("tr");
 
+        tr.innerHTML = `
+            <td>${row.timestamp}</td>
+            <td>${row.cycle}</td>
+            <td>${row.warehouse}</td>
+            <td>${row.bin}</td>
+
+            <td>${row.sku}</td>
+            <td>${row.lot}</td>
+            <td>${row.exp}</td>
+            <td>${row.qty}</td>
+
+            <td>
+                <button onclick="editRow(${index})">Edit</button>
+                <button onclick="deleteRow(${index})">Delete</button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+// =========================
+// DELETE ROW
+// =========================
+function deleteRow(i) {
+    if (!confirm("Delete this row?")) return;
+
+    data.splice(i, 1);
+    save();
+    render();
+}
+
+// =========================
+// EDIT ROW
+// =========================
+function editRow(i) {
+    const row = data[i];
+
+    const newSKU = prompt("SKU:", row.sku);
+    if (newSKU === null) return;
+
+    const newLot = prompt("Lot:", row.lot);
+    if (newLot === null) return;
+
+    const newExp = prompt("Expiration Date (YYYY-MM-DD):", row.exp);
+    if (newExp === null) return;
+
+    const newQty = prompt("On Hand:", row.qty);
+    if (newQty === null) return;
+
+    row.sku = newSKU.trim();
+    row.lot = newLot.trim();
+    row.exp = newExp.trim();
+    row.qty = parseInt(newQty);
+
+    save();
+    render();
+}
+
+// =========================
+// FINISH
+// =========================
 function finish() {
     alert("Bin finalized.");
     localStorage.removeItem("reviewData");
     window.location.href = "cycle.html";
 }
+
+// initial render
+render();
+
 </script>
 
 </body>
