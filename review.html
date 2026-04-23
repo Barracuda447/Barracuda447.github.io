@@ -125,19 +125,22 @@ async function sendCycleToSheet() {
 
     try {
         for (let item of data) {
-            await fetch(SHEET_URL, {
+
+            const res = await fetch(SHEET_URL, {
                 method: "POST",
                 body: JSON.stringify(item),
+                mode: "no-cors", // 🔥 KEY FIX FOR GITHUB PAGES
                 headers: {
-                    "Content-Type": "application/json"
+                    "Content-Type": "text/plain"
                 }
             });
+
         }
 
-        status.innerText = "✅ Successfully sent to Google Sheet!";
+        status.innerText = "✅ Sent (no-cors mode - cannot verify response)";
     } catch (err) {
         console.log(err);
-        status.innerText = "❌ Error sending data.";
+        status.innerText = "❌ Network error sending data.";
     }
 }
 
