@@ -39,9 +39,13 @@ button {
 
 <div id="scanSection" class="hidden">
 
-    <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
+    <p>
+        <strong>SKU:</strong>
+        <span id="skuDisplay"></span>
+    </p>
 
     <div class="topButtons">
+        <!-- CHANGED: NO RESET OF DATA -->
         <button onclick="nextSKU()">Next SKU</button>
         <button onclick="completeBin()">Complete Bin</button>
     </div>
@@ -54,6 +58,7 @@ button {
 <table id="resultTable" class="hidden">
     <thead>
         <tr>
+            <th>SKU</th>
             <th>LOT</th>
             <th>Expiration</th>
             <th>Quantity</th>
@@ -75,9 +80,14 @@ let buffer = '';
 let timer = null;
 let lastInputTime = Date.now();
 
+// CURRENT SKU TRACKING (IMPORTANT FIX)
+let currentSKU = '';
+
 function startScanning() {
     const sku = document.getElementById('sku').value.trim();
     if (!sku) return alert("Enter SKU first");
+
+    currentSKU = sku;
 
     document.getElementById('skuDisplay').innerText = sku;
 
@@ -88,21 +98,18 @@ function startScanning() {
     scanInput.focus();
 }
 
-// NEXT SKU
+// NEXT SKU (NO DATA RESET)
 function nextSKU() {
     const newSku = prompt("Enter next SKU:");
     if (!newSku) return;
 
+    currentSKU = newSku;
     document.getElementById('skuDisplay').innerText = newSku;
-    document.getElementById('sku').value = newSku;
-
-    dataStore = {};
-    renderTable();
 
     scanInput.focus();
 }
 
-// COMPLETE BIN → GO TO REVIEW PAGE
+// COMPLETE BIN (UNCHANGED DATA, JUST EXPORT)
 function completeBin() {
     const confirmEnd = confirm("Complete this bin and review scanned data?");
     if (!confirmEnd) return;
@@ -116,7 +123,7 @@ function completeBin() {
         cycle: cycle,
         warehouse: warehouse,
         bin: bin,
-        sku: document.getElementById('skuDisplay').innerText,
+        sku: item.sku,
         lot: item.lot,
         exp: item.exp,
         qty: item.qty
@@ -127,7 +134,7 @@ function completeBin() {
     window.location.href = "review.html";
 }
 
-// SCAN INPUT HANDLER
+// SCAN HANDLER
 scanInput.addEventListener('input', function () {
     const now = Date.now();
     const diff = now - lastInputTime;
@@ -166,7 +173,7 @@ function showError(message) {
     setTimeout(() => errorMsg.innerText = '', 1500);
 }
 
-// GS1 PARSER
+// PARSER
 function processScan(raw) {
     if (!raw) return;
 
@@ -184,9 +191,7 @@ function processScan(raw) {
     if (expIndex !== -1 && working.length >= expIndex + 8) {
         const expRaw = working.substr(expIndex + 2, 6);
 
-        if (expRaw.length === 6) {
-            exp = `20${expRaw.slice(0,2)}-${expRaw.slice(2,4)}-${expRaw.slice(4,6)}`;
-        }
+        exp = `20${expRaw.slice(0,2)}-${expRaw.slice(2,4)}-${expRaw.slice(4,6)}`;
 
         working = working.substring(0, expIndex) + working.substring(expIndex + 8);
     }
@@ -214,10 +219,15 @@ function processScan(raw) {
         return;
     }
 
-    const key = lot + "|" + exp;
+    const key = currentSKU + "|" + lot + "|" + exp;
 
     if (!dataStore[key]) {
-        dataStore[key] = { lot, exp, qty: 0 };
+        dataStore[key] = {
+            sku: currentSKU,
+            lot,
+            exp,
+            qty: 0
+        };
     }
 
     dataStore[key].qty++;
@@ -233,6 +243,7 @@ function renderTable() {
         const row = document.createElement('tr');
 
         row.innerHTML = `
+            <td>${item.sku}</td>
             <td>${item.lot}</td>
             <td>${item.exp}</td>
             <td>${item.qty}</td>
