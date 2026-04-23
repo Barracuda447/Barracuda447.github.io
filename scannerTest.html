@@ -61,7 +61,26 @@ function startScanning() {
 }
 
 // =========================
-// RELIABLE SCAN (ENTER-BASED)
+// ERROR SOUND
+// =========================
+function playErrorSound() {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    oscillator.type = "square";
+    oscillator.frequency.setValueAtTime(200, ctx.currentTime); // low buzz
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+
+    oscillator.connect(gain);
+    gain.connect(ctx.destination);
+
+    oscillator.start();
+    oscillator.stop(ctx.currentTime + 0.15);
+}
+
+// =========================
+// RELIABLE SCAN
 // =========================
 scanInput.addEventListener('keydown', function (e) {
     if (e.key === 'Enter') {
@@ -77,7 +96,7 @@ scanInput.addEventListener('keydown', function (e) {
     }
 });
 
-// Always keep focus
+// Keep focus
 setInterval(() => {
     if (document.activeElement !== scanInput) {
         scanInput.focus();
@@ -85,24 +104,23 @@ setInterval(() => {
 }, 500);
 
 // =========================
-// NORMALIZATION (KEY FIX)
+// NORMALIZATION
 // =========================
 function normalizeRaw(raw) {
     if (!raw) return '';
 
     let GS = String.fromCharCode(29);
 
-    // Convert common scanner variations into GS
     return raw
-        .replace(/\u001D/g, GS)   // real GS
-        .replace(/\]/g, GS)       // many scanners send ]
-        .replace(/~/g, GS)        // some send ~
-        .replace(/\s+/g, '')      // remove spaces/newlines
+        .replace(/\u001D/g, GS)
+        .replace(/\]/g, GS)
+        .replace(/~/g, GS)
+        .replace(/\s+/g, '')
         .trim();
 }
 
 // =========================
-// GS1 PARSER (CONSISTENT)
+// GS1 PARSER
 // =========================
 function processScan(raw) {
     console.log("RAW:", raw);
@@ -139,13 +157,11 @@ function processScan(raw) {
             while (i < raw.length) {
                 let ch = raw[i];
 
-                // Stop on GS
                 if (ch === GS) {
                     i++;
                     break;
                 }
 
-                // Stop if next looks like a valid AI (fallback when GS missing)
                 let nextTwo = raw.substr(i, 2);
                 if (AI_MAP[nextTwo]) break;
 
@@ -159,9 +175,6 @@ function processScan(raw) {
 
     console.log("PARSED:", parsed);
 
-    // =========================
-    // FIELD EXTRACTION
-    // =========================
     let lot = (parsed["10"] || '').trim();
     let expRaw = (parsed["17"] || '').trim();
 
@@ -172,8 +185,11 @@ function processScan(raw) {
 
     console.log("LOT:", lot, "EXP:", exp);
 
-    if (!lot || !exp) {
-        console.log("Parse failed:", raw);
+    // ❌ ERROR HANDLING ADDED HERE
+    if (!lot) {
+        playErrorSound();
+        alert("Scan failed: No LOT detected.");
+        console.log("Parse failed (no LOT):", raw);
         return;
     }
 
