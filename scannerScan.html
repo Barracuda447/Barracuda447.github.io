@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scanner Counter</title>
+    <style>
+        body { font-family: Arial; }
+        .hidden { display: none; }
+        table { border-collapse: collapse; margin-top: 20px; }
+        td, th { border: 1px solid #ccc; padding: 8px; }
+        #errorMsg { color: red; margin-top: 10px; }
+    </style>
+</head>
+<body>
+
+<h2>Scan Items</h2>
+
+<div id="skuSection">
+    <label>Enter SKU:</label><br>
+    <input type="text" id="sku">
+    <br><br>
+    <button onclick="startScanning()">Start Scanning</button>
+</div>
+
+<div id="scanSection" class="hidden">
+    <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
+    <p>Scan continuously...</p>
+    <input type="text" id="scanInput" autofocus>
+    <div id="errorMsg"></div>
+</div>
+
+<table id="resultTable" class="hidden">
+    <thead>
+        <tr>
+            <th>LOT</th>
+            <th>Expiration</th>
+            <th>Quantity</th>
+        </tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<br>
+<button onclick="resetAll()">Reset</button>
+
+<script>
+const scanInput = document.getElementById('scanInput');
+const tableBody = document.querySelector('#resultTable tbody');
+const errorMsg = document.getElementById('errorMsg');
+
+let dataStore = {};
+let buffer = '';
+let timer = null;
+let lastInputTime = Date.now();
+
+function startScanning() {
+    const sku = document.getElementById('sku').value.trim();
+    if (!sku) return alert("Enter SKU first");
+
+    document.getElementById('skuDisplay').innerText = sku;
+    document.getElementById('skuSection').classList.add('hidden');
+    document.getElementById('scanSection').classList.remove('hidden');
+    document.getElementById('resultTable').classList.remove('hidden');
+
+    scanInput.focus();
+}
+
+// =========================
+// BETTER SCAN DETECTION
+// =========================
+scanInput.addEventListener('input', function () {
+    const now = Date.now();
+    const diff = now - lastInputTime;
+    lastInputTime = now;
+
+    if (diff > 50) buffer = '';
+
+    buffer += scanInput.value;
+    scanInput.value = '';
+
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+        processScan(buffer);
+        buffer = '';
+    }, 50);
+});
+
+// =========================
+// ERROR FEEDBACK
+// =========================
+function showError(message) {
+    errorMsg.innerText = message;
+
+    // Louder beep
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+
+    gain.gain.setValueAtTime(1, ctx.currentTime); // max volume
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start();
+    osc.stop(ctx.currentTime + 0.25);
+
+    setTimeout(() => {
+        errorMsg.innerText = '';
+    }, 1500);
+}
+
+// =========================
+// ORDERED GS1 PARSER
+// =========================
+function processScan(raw) {
+    if (!raw) return;
+
+    console.log("RAW:", raw);
+
+    const GS = String.fromCharCode(29);
+    let working = raw;
+
+    let gtin = '';
+    let exp = '';
+    let lot = '';
+
+    // 1. GTIN (01 + 14 digits) at start
+    if (working.startsWith('01') && working.length >= 16) {
+        gtin = working.substr(2, 14);
+        working = working.substr(16);
+    }
+
+    // 2. Expiration (17 + 6 digits) - OPTIONAL
+    let expIndex = working.indexOf('17');
+    if (expIndex !== -1 && working.length >= expIndex + 8) {
+        const expRaw = working.substr(expIndex + 2, 6);
+
+        if (expRaw.length === 6) {
+            exp = `20${expRaw.slice(0,2)}-${expRaw.slice(2,4)}-${expRaw.slice(4,6)}`;
+        }
+
+        working =
+            working.substring(0, expIndex) +
+            working.substring(expIndex + 8);
+    }
+
+    // NEW: Remove Manufactured Date (11 + 6 digits)
+    let mfgIndex = working.indexOf('11');
+    if (mfgIndex !== -1 && working.length >= mfgIndex + 8) {
+        working =
+            working.substring(0, mfgIndex) +
+            working.substring(mfgIndex + 8);
+    }
+
+    // 3. Lot (10 variable)
+    let lotIndex = working.indexOf('10');
+    if (lotIndex !== -1) {
+        let i = lotIndex + 2;
+        let value = '';
+
+        while (i < working.length && working[i] !== GS) {
+            value += working[i];
+            i++;
+        }
+
+        lot = value;
+    }
+
+    console.log("GTIN:", gtin);
+    console.log("LOT:", lot, "EXP:", exp);
+
+    if (!lot) {
+        console.log("Parse failed:", raw);
+        showError("Invalid barcode scanned");
+        return;
+    }
+
+    const key = lot + "|" + exp;
+
+    if (!dataStore[key]) {
+        dataStore[key] = { lot, exp, qty: 0 };
+    }
+
+    dataStore[key].qty++;
+
+    renderTable();
+}
+
+// =========================
+// TABLE RENDER
+// =========================
+function renderTable() {
+    tableBody.innerHTML = '';
+
+    Object.values(dataStore).forEach(item => {
+        const row = document.createElement('tr');
+
+        row.innerHTML = `
+            <td>${item.lot}</td>
+            <td>${item.exp}</td>
+            <td>${item.qty}</td>
+        `;
+
+        tableBody.appendChild(row);
+    });
+}
+
+// =========================
+// RESET
+// =========================
+function resetAll() {
+    location.reload();
+}
+</script>
+
+</body>
+</html>

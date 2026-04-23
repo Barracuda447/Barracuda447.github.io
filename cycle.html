@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Start Cycle</title>
+    <style>
+        body { font-family: Arial; text-align: center; margin-top: 50px; }
+        input, button {
+            font-size: 18px;
+            padding: 10px;
+            margin: 10px;
+        }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<h2>Start New Cycle</h2>
+
+<p><strong>Warehouse:</strong> <span id="warehouseDisplay"></span></p>
+
+<input id="bin" placeholder="Enter Bin Location"><br>
+
+<button onclick="startCycle()">Start Scanning</button>
+
+<script>
+const warehouse = localStorage.getItem("warehouse");
+
+if (!warehouse) {
+    window.location.href = "index.html";
+}
+
+document.getElementById("warehouseDisplay").innerText = warehouse;
+
+function startCycle() {
+    const bin = document.getElementById("bin").value.trim();
+    if (!bin) return alert("Enter Bin Location");
+
+    localStorage.setItem("bin", bin);
+
+    // Optional: generate a cycle ID
+    const cycleId = "CYCLE-" + Date.now();
+    localStorage.setItem("cycle", cycleId);
+
+    window.location.href = "scanner.html";
+}
+</script>
+
+</body>
+</html>
