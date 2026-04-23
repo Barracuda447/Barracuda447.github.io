@@ -9,7 +9,19 @@
         .hidden { display: none; }
         table { border-collapse: collapse; margin-top: 20px; }
         td, th { border: 1px solid #ccc; padding: 8px; }
+
         #errorMsg { color: red; margin-top: 10px; }
+
+        .topButtons {
+            margin-top: 10px;
+        }
+
+        button {
+            margin: 5px;
+            padding: 10px 15px;
+            font-size: 14px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
@@ -24,7 +36,15 @@
 </div>
 
 <div id="scanSection" class="hidden">
+
     <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
+
+    <!-- NEW BUTTONS -->
+    <div class="topButtons">
+        <button onclick="nextSKU()">Next SKU</button>
+        <button onclick="completeBin()">Complete Bin</button>
+    </div>
+
     <p>Scan continuously...</p>
     <input type="text" id="scanInput" autofocus>
     <div id="errorMsg"></div>
@@ -67,6 +87,38 @@ function startScanning() {
 }
 
 // =========================
+// NEXT SKU (NEW)
+// =========================
+function nextSKU() {
+    const newSku = prompt("Enter next SKU:");
+    if (!newSku) return;
+
+    document.getElementById('skuDisplay').innerText = newSku;
+    document.getElementById('sku').value = newSku;
+
+    dataStore = {};
+    renderTable();
+
+    scanInput.focus();
+}
+
+// =========================
+// COMPLETE BIN (NEW)
+// =========================
+function completeBin() {
+    const confirmEnd = confirm("Complete this bin? This will clear all scanned data.");
+    if (!confirmEnd) return;
+
+    alert("Bin completed.");
+
+    dataStore = {};
+    renderTable();
+
+    // optional: you could redirect back to cycle page later
+    // window.location.href = "cycle.html";
+}
+
+// =========================
 // BETTER SCAN DETECTION
 // =========================
 scanInput.addEventListener('input', function () {
@@ -92,7 +144,6 @@ scanInput.addEventListener('input', function () {
 function showError(message) {
     errorMsg.innerText = message;
 
-    // Louder beep
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
@@ -100,7 +151,7 @@ function showError(message) {
     osc.type = 'sine';
     osc.frequency.setValueAtTime(440, ctx.currentTime);
 
-    gain.gain.setValueAtTime(1, ctx.currentTime); // max volume
+    gain.gain.setValueAtTime(1, ctx.currentTime);
 
     osc.connect(gain);
     gain.connect(ctx.destination);
@@ -119,8 +170,6 @@ function showError(message) {
 function processScan(raw) {
     if (!raw) return;
 
-    console.log("RAW:", raw);
-
     const GS = String.fromCharCode(29);
     let working = raw;
 
@@ -128,13 +177,11 @@ function processScan(raw) {
     let exp = '';
     let lot = '';
 
-    // 1. GTIN (01 + 14 digits) at start
     if (working.startsWith('01') && working.length >= 16) {
         gtin = working.substr(2, 14);
         working = working.substr(16);
     }
 
-    // 2. Expiration (17 + 6 digits) - OPTIONAL
     let expIndex = working.indexOf('17');
     if (expIndex !== -1 && working.length >= expIndex + 8) {
         const expRaw = working.substr(expIndex + 2, 6);
@@ -148,7 +195,6 @@ function processScan(raw) {
             working.substring(expIndex + 8);
     }
 
-    // NEW: Remove Manufactured Date (11 + 6 digits)
     let mfgIndex = working.indexOf('11');
     if (mfgIndex !== -1 && working.length >= mfgIndex + 8) {
         working =
@@ -156,7 +202,6 @@ function processScan(raw) {
             working.substring(mfgIndex + 8);
     }
 
-    // 3. Lot (10 variable)
     let lotIndex = working.indexOf('10');
     if (lotIndex !== -1) {
         let i = lotIndex + 2;
@@ -170,11 +215,7 @@ function processScan(raw) {
         lot = value;
     }
 
-    console.log("GTIN:", gtin);
-    console.log("LOT:", lot, "EXP:", exp);
-
     if (!lot) {
-        console.log("Parse failed:", raw);
         showError("Invalid barcode scanned");
         return;
     }
