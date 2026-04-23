@@ -39,13 +39,9 @@ button {
 
 <div id="scanSection" class="hidden">
 
-    <p>
-        <strong>SKU:</strong>
-        <span id="skuDisplay"></span>
-    </p>
+    <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
 
     <div class="topButtons">
-        <!-- CHANGED: NO RESET OF DATA -->
         <button onclick="nextSKU()">Next SKU</button>
         <button onclick="completeBin()">Complete Bin</button>
     </div>
@@ -71,6 +67,7 @@ button {
 <button onclick="resetAll()">Reset</button>
 
 <script>
+
 const scanInput = document.getElementById('scanInput');
 const tableBody = document.querySelector('#resultTable tbody');
 const errorMsg = document.getElementById('errorMsg');
@@ -80,9 +77,11 @@ let buffer = '';
 let timer = null;
 let lastInputTime = Date.now();
 
-// CURRENT SKU TRACKING (IMPORTANT FIX)
-let currentSKU = '';
+let currentSKU = "";
 
+// =========================
+// START SCANNING
+// =========================
 function startScanning() {
     const sku = document.getElementById('sku').value.trim();
     if (!sku) return alert("Enter SKU first");
@@ -98,7 +97,9 @@ function startScanning() {
     scanInput.focus();
 }
 
-// NEXT SKU (NO DATA RESET)
+// =========================
+// NEXT SKU (DOES NOT RESET DATA)
+// =========================
 function nextSKU() {
     const newSku = prompt("Enter next SKU:");
     if (!newSku) return;
@@ -109,7 +110,9 @@ function nextSKU() {
     scanInput.focus();
 }
 
-// COMPLETE BIN (UNCHANGED DATA, JUST EXPORT)
+// =========================
+// COMPLETE BIN (EXPORTS EVERYTHING)
+// =========================
 function completeBin() {
     const confirmEnd = confirm("Complete this bin and review scanned data?");
     if (!confirmEnd) return;
@@ -134,7 +137,9 @@ function completeBin() {
     window.location.href = "review.html";
 }
 
-// SCAN HANDLER
+// =========================
+// SCAN INPUT HANDLER
+// =========================
 scanInput.addEventListener('input', function () {
     const now = Date.now();
     const diff = now - lastInputTime;
@@ -152,7 +157,9 @@ scanInput.addEventListener('input', function () {
     }, 50);
 });
 
-// ERROR
+// =========================
+// ERROR FEEDBACK
+// =========================
 function showError(message) {
     errorMsg.innerText = message;
 
@@ -170,10 +177,14 @@ function showError(message) {
     osc.start();
     osc.stop(ctx.currentTime + 0.25);
 
-    setTimeout(() => errorMsg.innerText = '', 1500);
+    setTimeout(() => {
+        errorMsg.innerText = '';
+    }, 1500);
 }
 
-// PARSER
+// =========================
+// GS1 PARSER
+// =========================
 function processScan(raw) {
     if (!raw) return;
 
@@ -235,7 +246,9 @@ function processScan(raw) {
     renderTable();
 }
 
-// TABLE
+// =========================
+// TABLE RENDER
+// =========================
 function renderTable() {
     tableBody.innerHTML = '';
 
@@ -253,10 +266,13 @@ function renderTable() {
     });
 }
 
+// =========================
 // RESET
+// =========================
 function resetAll() {
     location.reload();
 }
+
 </script>
 
 </body>
