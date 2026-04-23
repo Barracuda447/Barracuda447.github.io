@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bin Review</title>
+
+<style>
+body { font-family: Arial; }
+table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+th, td { border: 1px solid #ccc; padding: 8px; }
+th { background: #f2f2f2; }
+button { margin-top: 15px; padding: 10px 15px; }
+</style>
+</head>
+
+<body>
+
+<h2>Bin Review</h2>
+
+<table>
+<thead>
+<tr>
+    <th>Timestamp</th>
+    <th>Cycle</th>
+    <th>Warehouse</th>
+    <th>Bin</th>
+    <th>SKU</th>
+    <th>Lot</th>
+    <th>Expiration Date</th>
+    <th>On Hand</th>
+</tr>
+</thead>
+
+<tbody id="reviewBody"></tbody>
+</table>
+
+<button onclick="finish()">Finish</button>
+
+<script>
+const data = JSON.parse(localStorage.getItem("reviewData") || "[]");
+const tbody = document.getElementById("reviewBody");
+
+data.forEach(row => {
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+        <td>${row.timestamp}</td>
+        <td>${row.cycle}</td>
+        <td>${row.warehouse}</td>
+        <td>${row.bin}</td>
+        <td>${row.sku}</td>
+        <td>${row.lot}</td>
+        <td>${row.exp}</td>
+        <td>${row.qty}</td>
+    `;
+
+    tbody.appendChild(tr);
+});
+
+function finish() {
+    alert("Bin finalized.");
+    localStorage.removeItem("reviewData");
+    window.location.href = "cycle.html";
+}
+</script>
+
+</body>
+</html>
