@@ -139,7 +139,7 @@ let lastInputTime = Date.now();
 let currentSKU = "";
 
 /* =========================
-   STRICT DATE VALIDATION (REPLACED LOGIC)
+   STRICT DATE VALIDATION (UNCHANGED)
 ========================= */
 function isLeapYear(year) {
     return (
@@ -174,9 +174,9 @@ function isValidDate(y, m, d) {
     return true;
 }
 
-// =========================
-// BUILD DATE DROPDOWNS (UNCHANGED)
-// =========================
+/* =========================
+   DROPDOWNS (UPDATED: DYNAMIC DAYS)
+========================= */
 (function initDropdowns() {
     const year = document.getElementById("mYear");
     const month = document.getElementById("mMonth");
@@ -197,15 +197,50 @@ function isValidDate(y, m, d) {
     }
 
     day.innerHTML = `<option value="">Day</option>`;
-    for (let d = 1; d <= 31; d++) {
+})();
+
+/* =========================
+   NEW: DYNAMIC DAY BUILDER
+========================= */
+function updateDays() {
+    const year = parseInt(document.getElementById("mYear").value);
+    const month = parseInt(document.getElementById("mMonth").value);
+    const day = document.getElementById("mDay");
+
+    day.innerHTML = `<option value="">Day</option>`;
+
+    if (!year || !month) return;
+
+    const monthDays = {
+        1: 31,
+        2: isLeapYear(year) ? 29 : 28,
+        3: 31,
+        4: 30,
+        5: 31,
+        6: 30,
+        7: 31,
+        8: 31,
+        9: 30,
+        10: 31,
+        11: 30,
+        12: 31
+    };
+
+    const max = monthDays[month];
+
+    for (let d = 1; d <= max; d++) {
         const dd = String(d).padStart(2, '0');
         day.innerHTML += `<option value="${dd}">${dd}</option>`;
     }
-})();
+}
 
-// =========================
-// START SCANNING
-// =========================
+/* attach listeners */
+document.getElementById("mYear").addEventListener("change", updateDays);
+document.getElementById("mMonth").addEventListener("change", updateDays);
+
+/* =========================
+   START SCANNING
+========================= */
 function startScanning() {
     const sku = document.getElementById('sku').value.trim();
     if (!sku) return alert("Enter SKU first");
@@ -221,9 +256,9 @@ function startScanning() {
     scanInput.focus();
 }
 
-// =========================
-// NEXT SKU
-// =========================
+/* =========================
+   NEXT SKU
+========================= */
 function nextSKU() {
     const newSku = prompt("Enter next SKU:");
     if (!newSku) return;
@@ -234,9 +269,9 @@ function nextSKU() {
     scanInput.focus();
 }
 
-// =========================
-// COMPLETE BIN
-// =========================
+/* =========================
+   COMPLETE BIN
+========================= */
 function completeBin() {
     const confirmEnd = confirm("Complete this bin and review scanned data?");
     if (!confirmEnd) return;
@@ -261,9 +296,9 @@ function completeBin() {
     window.location.href = "review.html";
 }
 
-// =========================
-// MANUAL ENTRY
-// =========================
+/* =========================
+   MANUAL ENTRY
+========================= */
 function openManual() {
     document.getElementById('manualModal').style.display = 'flex';
 }
@@ -272,9 +307,9 @@ function closeManual() {
     document.getElementById('manualModal').style.display = 'none';
 }
 
-// =========================
-// ADD MANUAL ITEM (UNCHANGED EXCEPT VALIDATION NOW USES NEW SYSTEM)
-// =========================
+/* =========================
+   ADD MANUAL ITEM
+========================= */
 function addManual() {
     const lot = document.getElementById('mLot').value.trim();
     const qty = parseInt(document.getElementById('mQty').value);
@@ -292,7 +327,6 @@ function addManual() {
     const m = parseInt(month);
     const d = parseInt(day);
 
-    // ✅ STRICT CALENDAR VALIDATION (REPLACED)
     if (!isValidDate(y, m, d)) {
         alert("Invalid calendar date (e.g. Feb 30 not allowed)");
         return;
@@ -321,12 +355,12 @@ function addManual() {
 
     document.getElementById('mYear').selectedIndex = 0;
     document.getElementById('mMonth').selectedIndex = 0;
-    document.getElementById('mDay').selectedIndex = 0;
+    document.getElementById('mDay').innerHTML = `<option value="">Day</option>`;
 }
 
-// =========================
-// SCAN INPUT
-// =========================
+/* =========================
+   SCAN INPUT
+========================= */
 scanInput.addEventListener('input', function () {
     const now = Date.now();
     const diff = now - lastInputTime;
@@ -344,9 +378,9 @@ scanInput.addEventListener('input', function () {
     }, 50);
 });
 
-// =========================
-// ERROR
-// =========================
+/* =========================
+   ERROR
+========================= */
 function showError(message) {
     errorMsg.innerText = message;
 
@@ -367,9 +401,9 @@ function showError(message) {
     setTimeout(() => errorMsg.innerText = '', 1500);
 }
 
-// =========================
-// PARSER
-// =========================
+/* =========================
+   PARSER
+========================= */
 function processScan(raw) {
     if (!raw) return;
 
@@ -429,9 +463,9 @@ function processScan(raw) {
     renderTable();
 }
 
-// =========================
-// TABLE
-// =========================
+/* =========================
+   TABLE
+========================= */
 function renderTable() {
     tableBody.innerHTML = '';
 
@@ -449,9 +483,9 @@ function renderTable() {
     });
 }
 
-// =========================
-// RESET
-// =========================
+/* =========================
+   RESET
+========================= */
 function resetAll() {
     location.reload();
 }
