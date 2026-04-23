@@ -37,14 +37,11 @@ button {
 }
 
 /* =========================
-   MANUAL ENTRY MODAL
+   MODAL
 ========================= */
 #manualModal {
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background: rgba(0,0,0,0.5);
     display: none;
     align-items: center;
@@ -54,11 +51,11 @@ button {
 #manualBox {
     background: white;
     padding: 20px;
-    width: 300px;
+    width: 320px;
     border-radius: 8px;
 }
 
-#manualBox input {
+#manualBox input, #manualBox select {
     width: 100%;
     margin: 5px 0;
     padding: 8px;
@@ -115,7 +112,12 @@ button {
         <h3>Manual LOT Entry</h3>
 
         <input id="mLot" placeholder="LOT">
-        <input id="mExp" placeholder="Expiration (YYYY-MM-DD)">
+
+        <!-- EXPIRY DROPDOWNS -->
+        <select id="mYear"></select>
+        <select id="mMonth"></select>
+        <select id="mDay"></select>
+
         <input id="mQty" type="number" placeholder="Quantity">
 
         <button onclick="addManual()">Add</button>
@@ -137,7 +139,33 @@ let lastInputTime = Date.now();
 let currentSKU = "";
 
 // =========================
-// START SCANNING
+// INIT DROPDOWNS
+// =========================
+(function initDateDropdowns() {
+    const year = document.getElementById("mYear");
+    const month = document.getElementById("mMonth");
+    const day = document.getElementById("mDay");
+
+    const currentYear = new Date().getFullYear();
+
+    // Years (current + 10 forward)
+    for (let y = currentYear; y <= currentYear + 10; y++) {
+        year.innerHTML += `<option value="${y}">${y}</option>`;
+    }
+
+    // Months
+    for (let m = 1; m <= 12; m++) {
+        month.innerHTML += `<option value="${String(m).padStart(2,'0')}">${m}</option>`;
+    }
+
+    // Days
+    for (let d = 1; d <= 31; d++) {
+        day.innerHTML += `<option value="${String(d).padStart(2,'0')}">${d}</option>`;
+    }
+})();
+
+// =========================
+// START
 // =========================
 function startScanning() {
     const sku = document.getElementById('sku').value.trim();
@@ -195,7 +223,7 @@ function completeBin() {
 }
 
 // =========================
-// MANUAL ENTRY (NEW)
+// MANUAL MODAL
 // =========================
 function openManual() {
     document.getElementById('manualModal').style.display = 'flex';
@@ -205,16 +233,23 @@ function closeManual() {
     document.getElementById('manualModal').style.display = 'none';
 }
 
-// THIS USES SAME DATA STRUCTURE AS SCAN
+// =========================
+// ADD MANUAL ENTRY
+// =========================
 function addManual() {
     const lot = document.getElementById('mLot').value.trim();
-    const exp = document.getElementById('mExp').value.trim();
     const qty = parseInt(document.getElementById('mQty').value);
+
+    const year = document.getElementById('mYear').value;
+    const month = document.getElementById('mMonth').value;
+    const day = document.getElementById('mDay').value;
 
     if (!lot || !qty) {
         alert("LOT and Quantity required");
         return;
     }
+
+    const exp = `${year}-${month}-${day}`;
 
     const key = currentSKU + "|" + lot + "|" + exp;
 
@@ -233,7 +268,6 @@ function addManual() {
     closeManual();
 
     document.getElementById('mLot').value = '';
-    document.getElementById('mExp').value = '';
     document.getElementById('mQty').value = '';
 }
 
