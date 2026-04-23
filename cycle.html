@@ -10,7 +10,6 @@
             padding: 10px;
             margin: 10px;
         }
-        .hidden { display: none; }
     </style>
 </head>
 <body>
@@ -27,7 +26,7 @@
 const warehouse = localStorage.getItem("warehouse");
 
 if (!warehouse) {
-    window.location.href = "index.html";
+    window.location.href = "scannerTest.html";
 }
 
 document.getElementById("warehouseDisplay").innerText = warehouse;
@@ -38,11 +37,11 @@ function startCycle() {
 
     localStorage.setItem("bin", bin);
 
-    // Optional: generate a cycle ID
     const cycleId = "CYCLE-" + Date.now();
     localStorage.setItem("cycle", cycleId);
 
-    window.location.href = "scanner.html";
+    // UPDATED ROUTE HERE
+    window.location.href = "scannerScan.html";
 }
 </script>
 
