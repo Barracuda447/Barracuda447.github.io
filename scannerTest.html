@@ -47,9 +47,6 @@ const scanInput = document.getElementById('scanInput');
 const tableBody = document.querySelector('#resultTable tbody');
 
 let dataStore = {};
-let buffer = '';
-let timer = null;
-let lastInputTime = Date.now();
 
 function startScanning() {
     const sku = document.getElementById('sku').value.trim();
@@ -64,41 +61,59 @@ function startScanning() {
 }
 
 // =========================
-// BETTER SCAN DETECTION
+// RELIABLE SCAN (ENTER-BASED)
 // =========================
-scanInput.addEventListener('input', function () {
-    const now = Date.now();
-    const diff = now - lastInputTime;
-    lastInputTime = now;
+scanInput.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
 
-    // If too slow → treat as manual typing → reset buffer
-    if (diff > 50) buffer = '';
+        let value = normalizeRaw(scanInput.value);
 
-    buffer += scanInput.value;
-    scanInput.value = '';
+        if (value) {
+            processScan(value);
+        }
 
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-        processScan(buffer);
-        buffer = '';
-    }, 50);
+        scanInput.value = '';
+    }
 });
 
+// Always keep focus
+setInterval(() => {
+    if (document.activeElement !== scanInput) {
+        scanInput.focus();
+    }
+}, 500);
+
 // =========================
-// GS1 PARSER
+// NORMALIZATION (KEY FIX)
+// =========================
+function normalizeRaw(raw) {
+    if (!raw) return '';
+
+    let GS = String.fromCharCode(29);
+
+    // Convert common scanner variations into GS
+    return raw
+        .replace(/\u001D/g, GS)   // real GS
+        .replace(/\]/g, GS)       // many scanners send ]
+        .replace(/~/g, GS)        // some send ~
+        .replace(/\s+/g, '')      // remove spaces/newlines
+        .trim();
+}
+
+// =========================
+// GS1 PARSER (CONSISTENT)
 // =========================
 function processScan(raw) {
-    if (!raw) return;
-
     console.log("RAW:", raw);
 
     const GS = String.fromCharCode(29);
 
     const AI_MAP = {
-        "01": { length: 14, fixed: true }, // GTIN
-        "17": { length: 6, fixed: true },  // Expiration
-        "10": { fixed: false },            // Lot
-        "21": { fixed: false },            // Serial (optional future use)
+        "01": { length: 14, fixed: true },
+        "17": { length: 6, fixed: true },
+        "10": { fixed: false },
+        "21": { fixed: false },
     };
 
     let i = 0;
@@ -108,7 +123,7 @@ function processScan(raw) {
         let ai = raw.substr(i, 2);
 
         if (!AI_MAP[ai]) {
-            i++; // skip unknown safely
+            i++;
             continue;
         }
 
@@ -120,13 +135,25 @@ function processScan(raw) {
             i += len;
         } else {
             let value = '';
-            while (i < raw.length && raw[i] !== GS) {
-                value += raw[i];
+
+            while (i < raw.length) {
+                let ch = raw[i];
+
+                // Stop on GS
+                if (ch === GS) {
+                    i++;
+                    break;
+                }
+
+                // Stop if next looks like a valid AI (fallback when GS missing)
+                let nextTwo = raw.substr(i, 2);
+                if (AI_MAP[nextTwo]) break;
+
+                value += ch;
                 i++;
             }
-            parsed[ai] = value;
 
-            if (raw[i] === GS) i++; // skip GS
+            parsed[ai] = value;
         }
     }
 
@@ -135,11 +162,11 @@ function processScan(raw) {
     // =========================
     // FIELD EXTRACTION
     // =========================
-    let lot = parsed["10"] || '';
-    let expRaw = parsed["17"] || '';
+    let lot = (parsed["10"] || '').trim();
+    let expRaw = (parsed["17"] || '').trim();
 
     let exp = '';
-    if (expRaw.length === 6) {
+    if (/^\d{6}$/.test(expRaw)) {
         exp = `20${expRaw.slice(0,2)}-${expRaw.slice(2,4)}-${expRaw.slice(4,6)}`;
     }
 
