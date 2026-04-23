@@ -9,6 +9,7 @@
         .hidden { display: none; }
         table { border-collapse: collapse; margin-top: 20px; }
         td, th { border: 1px solid #ccc; padding: 8px; }
+        #errorMsg { color: red; margin-top: 10px; }
     </style>
 </head>
 <body>
@@ -26,6 +27,7 @@
     <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
     <p>Scan continuously...</p>
     <input type="text" id="scanInput" autofocus>
+    <div id="errorMsg"></div>
 </div>
 
 <table id="resultTable" class="hidden">
@@ -45,6 +47,7 @@
 <script>
 const scanInput = document.getElementById('scanInput');
 const tableBody = document.querySelector('#resultTable tbody');
+const errorMsg = document.getElementById('errorMsg');
 
 let dataStore = {};
 let buffer = '';
@@ -84,6 +87,27 @@ scanInput.addEventListener('input', function () {
 });
 
 // =========================
+// ERROR FEEDBACK
+// =========================
+function showError(message) {
+    errorMsg.innerText = message;
+
+    // Beep sound
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(440, ctx.currentTime);
+    osc.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.15);
+
+    // Clear after short delay
+    setTimeout(() => {
+        errorMsg.innerText = '';
+    }, 1500);
+}
+
+// =========================
 // ORDERED GS1 PARSER
 // =========================
 function processScan(raw) {
@@ -104,7 +128,7 @@ function processScan(raw) {
         working = working.substr(16);
     }
 
-    // 2. Expiration (17 + 6 digits)
+    // 2. Expiration (17 + 6 digits) - OPTIONAL
     let expIndex = working.indexOf('17');
     if (expIndex !== -1 && working.length >= expIndex + 8) {
         const expRaw = working.substr(expIndex + 2, 6);
@@ -135,8 +159,10 @@ function processScan(raw) {
     console.log("GTIN:", gtin);
     console.log("LOT:", lot, "EXP:", exp);
 
-    if (!lot || !exp) {
+    // Only lot is required now
+    if (!lot) {
         console.log("Parse failed:", raw);
+        showError("Invalid barcode scanned");
         return;
     }
 
