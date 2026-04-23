@@ -144,7 +144,19 @@ let lastInputTime = Date.now();
 let currentSKU = "";
 
 // =========================
-// BUILD DATE DROPDOWNS
+// DATE VALIDATION (NEW - ONLY ADDITION)
+// =========================
+function isValidDate(y, m, d) {
+    const date = new Date(y, m - 1, d);
+    return (
+        date.getFullYear() == y &&
+        date.getMonth() == m - 1 &&
+        date.getDate() == d
+    );
+}
+
+// =========================
+// BUILD DATE DROPDOWNS (ONLY CHANGE IS YEAR RANGE)
 // =========================
 (function initDropdowns() {
     const year = document.getElementById("mYear");
@@ -154,20 +166,20 @@ let currentSKU = "";
     const now = new Date();
     const currentYear = now.getFullYear();
 
-    // Years (current → +10)
+    // YEARS (FIXED: now allows expired items)
     year.innerHTML = `<option value="">Year</option>`;
-    for (let y = currentYear; y <= currentYear + 10; y++) {
+    for (let y = currentYear - 3; y <= currentYear + 10; y++) {
         year.innerHTML += `<option value="${y}">${y}</option>`;
     }
 
-    // Months
+    // MONTHS
     month.innerHTML = `<option value="">Month</option>`;
     for (let m = 1; m <= 12; m++) {
         const mm = String(m).padStart(2, '0');
         month.innerHTML += `<option value="${mm}">${mm}</option>`;
     }
 
-    // Days
+    // DAYS
     day.innerHTML = `<option value="">Day</option>`;
     for (let d = 1; d <= 31; d++) {
         const dd = String(d).padStart(2, '0');
@@ -245,7 +257,7 @@ function closeManual() {
 }
 
 // =========================
-// ADD MANUAL ITEM
+// ADD MANUAL ITEM (ONLY ADDITION = DATE CHECK)
 // =========================
 function addManual() {
     const lot = document.getElementById('mLot').value.trim();
@@ -257,6 +269,16 @@ function addManual() {
 
     if (!lot || !qty || !year || !month || !day) {
         alert("Please fill LOT, quantity, and full expiration date");
+        return;
+    }
+
+    const y = parseInt(year);
+    const m = parseInt(month);
+    const d = parseInt(day);
+
+    // STRICT REAL DATE VALIDATION (NEW)
+    if (!isValidDate(y, m, d)) {
+        alert("Invalid calendar date (e.g. Feb 30 not allowed)");
         return;
     }
 
