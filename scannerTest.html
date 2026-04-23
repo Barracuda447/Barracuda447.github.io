@@ -49,6 +49,7 @@ const tableBody = document.querySelector('#resultTable tbody');
 let dataStore = {};
 let buffer = '';
 let timer = null;
+let lastInputTime = Date.now();
 
 function startScanning() {
     const sku = document.getElementById('sku').value.trim();
@@ -62,71 +63,84 @@ function startScanning() {
     scanInput.focus();
 }
 
-// --- auto scan detection ---
+// =========================
+// BETTER SCAN DETECTION
+// =========================
 scanInput.addEventListener('input', function () {
-    buffer = scanInput.value;
+    const now = Date.now();
+    const diff = now - lastInputTime;
+    lastInputTime = now;
+
+    // If too slow → treat as manual typing → reset buffer
+    if (diff > 50) buffer = '';
+
+    buffer += scanInput.value;
+    scanInput.value = '';
 
     clearTimeout(timer);
-
     timer = setTimeout(() => {
         processScan(buffer);
         buffer = '';
-        scanInput.value = '';
-    }, 100);
+    }, 50);
 });
 
+// =========================
+// GS1 PARSER
+// =========================
 function processScan(raw) {
     if (!raw) return;
 
     console.log("RAW:", raw);
 
-    let data = raw;
+    const GS = String.fromCharCode(29);
 
-    // =========================
-    // STEP 1: REMOVE GTIN
-    // =========================
-    if (/^01\d{14}/.test(data)) {
-        data = data.slice(16);
-    }
+    const AI_MAP = {
+        "01": { length: 14, fixed: true }, // GTIN
+        "17": { length: 6, fixed: true },  // Expiration
+        "10": { fixed: false },            // Lot
+        "21": { fixed: false },            // Serial (optional future use)
+    };
 
-    console.log("AFTER GTIN:", data);
+    let i = 0;
+    let parsed = {};
 
-    // =========================
-    // STEP 2: EXTRACT + REMOVE EXP (17)
-    // =========================
-    let exp = '';
-    const expMatch = data.match(/17(\d{6})/);
+    while (i < raw.length) {
+        let ai = raw.substr(i, 2);
 
-    if (expMatch) {
-        const r = expMatch[1];
-        exp = `20${r.slice(0,2)}-${r.slice(2,4)}-${r.slice(4,6)}`;
-
-        // remove full 17 + 6 digits
-        data = data.replace(/17\d{6}/, '');
-    }
-
-    console.log("AFTER EXP REMOVAL:", data);
-
-    // =========================
-    // STEP 3: FIND LOT (LEFT → RIGHT)
-    // =========================
-    let lot = '';
-    const lotIndex = data.indexOf('10');
-
-    if (lotIndex !== -1) {
-        let i = lotIndex + 2;
-
-        const GS = String.fromCharCode(29);
-
-        while (i < data.length) {
-            const ch = data.charAt(i);
-
-            if (ch === GS) break;
-            if (ch.charCodeAt(0) < 32) break;
-
-            lot += ch;
-            i++;
+        if (!AI_MAP[ai]) {
+            i++; // skip unknown safely
+            continue;
         }
+
+        i += 2;
+
+        if (AI_MAP[ai].fixed) {
+            const len = AI_MAP[ai].length;
+            parsed[ai] = raw.substr(i, len);
+            i += len;
+        } else {
+            let value = '';
+            while (i < raw.length && raw[i] !== GS) {
+                value += raw[i];
+                i++;
+            }
+            parsed[ai] = value;
+
+            if (raw[i] === GS) i++; // skip GS
+        }
+    }
+
+    console.log("PARSED:", parsed);
+
+    // =========================
+    // FIELD EXTRACTION
+    // =========================
+    let lot = parsed["10"] || '';
+    let expRaw = parsed["17"] || '';
+
+    let exp = '';
+    if (expRaw.length === 6) {
+        exp = `20${expRaw.slice(0,2)}-${expRaw.slice(2,4)}-${expRaw.slice(4,6)}`;
     }
 
     console.log("LOT:", lot, "EXP:", exp);
@@ -147,6 +161,9 @@ function processScan(raw) {
     renderTable();
 }
 
+// =========================
+// TABLE RENDER
+// =========================
 function renderTable() {
     tableBody.innerHTML = '';
 
@@ -163,6 +180,9 @@ function renderTable() {
     });
 }
 
+// =========================
+// RESET
+// =========================
 function resetAll() {
     location.reload();
 }
