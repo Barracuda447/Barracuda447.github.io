@@ -1,181 +1,181 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Scanner Adjustment Calculator</title>
+  <title>Scanner Adjustment Wizard</title>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
 
-<h2>Scanner Adjustment Calculator</h2>
+<h2>Scanner Adjustment Wizard</h2>
 
-<button onclick="startNewAdjustment()">New Adjustment</button>
+<button onclick="startFlow()">Create New Adjustment</button>
 
-<div id="uploadSection" style="display:none; margin-top:15px;">
-  <label>Upload NetSuite Export (CSV/TSV):</label>
-  <input type="file" id="fileInput" />
+<!-- STEP 1 -->
+<div id="step1" style="display:none;">
+  <h3>Step 1: Connecting to Google Sheet...</h3>
+  <div id="status"></div>
 </div>
 
-<div id="binDateSelector" style="display:none; margin-top:20px;">
-  <h3>Select Cycle Count Batch</h3>
-  <div id="options"></div>
+<!-- STEP 2 -->
+<div id="step2" style="display:none;">
+  <h3>Step 2: Upload NetSuite File</h3>
+  <input type="file" id="fileInput">
 </div>
 
-<h3>Status</h3>
-<div id="status" style="font-weight:bold;"></div>
+<!-- STEP 3 -->
+<div id="step3" style="display:none;">
+  <h3>Step 3: Select Cycle Batch</h3>
+  <div id="batchOptions"></div>
+</div>
 
-<h3>Results</h3>
-<table border="1" id="resultTable">
-  <thead>
-    <tr>
-      <th>Item</th>
-      <th>Lot</th>
-      <th>Expiration</th>
-      <th>Bin</th>
-      <th>On Hand Adjustment</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
+<!-- STEP 4 -->
+<div id="step4" style="display:none;">
+  <h3>Step 4: Adjustments</h3>
+  <table border="1">
+    <thead>
+      <tr>
+        <th>Item</th>
+        <th>Lot</th>
+        <th>Expiration</th>
+        <th>Bin</th>
+        <th>Adjustment</th>
+      </tr>
+    </thead>
+    <tbody id="results"></tbody>
+  </table>
+</div>
 
 <script>
 
 // =====================
-// GOOGLE SHEET SOURCE
+// DATA STORAGE
 // =====================
-const SHEET_URL =
-"https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9buyeY2V9qHg10FJJ3JbuyV-o8xvbF2QEGSLgX-3cIdgwR7fDJoY_BLiiAOQYCUHv0qcQ3fMLVDv-/pub?output=csv";
-
-let netSuiteData = [];
 let cycleData = [];
+let netSuiteData = [];
+let selectedBin = "";
+let selectedDate = "";
 
 // =====================
 // HELPERS
 // =====================
-function clean(v) {
-  return (v || "").toString().trim();
-}
+function clean(v){ return (v||"").toString().trim(); }
 
-function num(v) {
+function num(v){
   const n = parseFloat(v);
   return isNaN(n) ? 0 : n;
 }
 
-function normDate(v) {
+function normDate(v){
   const d = new Date(v);
   if (isNaN(d)) return "";
   return d.toISOString().split("T")[0];
 }
 
 // =====================
-// START
+// STEP FLOW CONTROLLER
 // =====================
-function startNewAdjustment() {
-  document.getElementById("uploadSection").style.display = "block";
-  loadCycleDataAndShowOptions();
+function startFlow(){
+  document.getElementById("step1").style.display = "block";
+  loadGoogleSheet();
 }
 
 // =====================
-// NETSUITE UPLOAD
+// STEP 1: LOAD GOOGLE SHEET
+// =====================
+async function loadGoogleSheet(){
+
+  const status = document.getElementById("status");
+  status.innerText = "Loading...";
+
+  const res = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9buyeY2V9qHg10FJJ3JbuyV-o8xvbF2QEGSLgX-3cIdgwR7fDJoY_BLiiAOQYCUHv0qcQ3fMLVDv-/pub?output=csv");
+  const text = await res.text();
+
+  const parsed = Papa.parse(text.trim(), {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: h => h.trim()
+  });
+
+  cycleData = parsed.data;
+
+  status.innerText = "Google Sheet Connected ✔";
+
+  // move to step 2
+  document.getElementById("step2").style.display = "block";
+}
+
+// =====================
+// STEP 2: NETSUITE UPLOAD
 // =====================
 document.getElementById("fileInput").addEventListener("change", e => {
+
   Papa.parse(e.target.files[0], {
     header: true,
     skipEmptyLines: true,
     delimiter: "",
     transformHeader: h => h.trim(),
     complete: r => {
+
       netSuiteData = r.data;
-      console.log("NetSuite sample:", netSuiteData[0]);
-      alert("NetSuite loaded");
+
+      buildBatchOptions();
+
+      document.getElementById("step3").style.display = "block";
     }
   });
 });
 
 // =====================
-// LOAD GOOGLE SHEET
+// STEP 3: BUILD BIN + DATE OPTIONS
 // =====================
-async function loadCycleData() {
-  const statusEl = document.getElementById("status");
-
-  try {
-    statusEl.innerText = "Loading Google Sheet...";
-    statusEl.style.color = "orange";
-
-    const res = await fetch(SHEET_URL);
-    const text = await res.text();
-
-    const parsed = Papa.parse(text.trim(), {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: h => h.trim()
-    });
-
-    cycleData = parsed.data;
-
-    statusEl.innerText = "Google Sheet Loaded ✔";
-    statusEl.style.color = "green";
-
-  } catch (err) {
-    console.error(err);
-    statusEl.innerText = "ERROR: " + err.message;
-    statusEl.style.color = "red";
-  }
-}
-
-// =====================
-// BUILD BIN + DATE OPTIONS
-// =====================
-async function loadCycleDataAndShowOptions() {
-  await loadCycleData();
+function buildBatchOptions(){
 
   const map = {};
 
   cycleData.forEach(r => {
     const bin = clean(r["Bin"]);
     const date = normDate(r["Timestamp"]);
-
     if (!bin || !date) return;
 
     map[`${date}|${bin}`] = true;
   });
 
-  const div = document.getElementById("options");
+  const div = document.getElementById("batchOptions");
   div.innerHTML = "";
 
   Object.keys(map).forEach(k => {
+
     const [date, bin] = k.split("|");
 
     const d = new Date(date + "T00:00:00");
-    const label = d.toLocaleDateString(undefined, {
-      month: "long",
-      day: "numeric"
+    const label = d.toLocaleDateString(undefined,{
+      month:"long",
+      day:"numeric"
     });
 
     const btn = document.createElement("button");
     btn.innerText = `${label}, Bin ${bin}`;
-    btn.onclick = () => runAdjustment(bin, date);
+
+    btn.onclick = () => {
+      selectedBin = bin;
+      selectedDate = date;
+      runCalculation();
+    };
 
     div.appendChild(btn);
   });
-
-  document.getElementById("binDateSelector").style.display = "block";
 }
 
 // =====================
-// CORE LEDGER LOGIC (FIXED)
+// STEP 4: CORE LOGIC
 // =====================
-function runAdjustment(bin, date) {
-
-  const tbody = document.querySelector("#resultTable tbody");
-  tbody.innerHTML = "";
+function runCalculation(){
 
   const ledger = {};
 
-  // ---------------------
-  // NETSUITE = NEGATIVE
-  // ---------------------
+  // NETSUITE (-)
   netSuiteData
-    .filter(r => clean(r["Bin Number"]) === bin)
+    .filter(r => clean(r["Bin Number"]) === selectedBin)
     .forEach(r => {
 
       const key = [
@@ -185,18 +185,14 @@ function runAdjustment(bin, date) {
         clean(r["Bin Number"])
       ].join("|");
 
-      const qty = num(r["On Hand"]);
-
-      ledger[key] = (ledger[key] || 0) - qty;
+      ledger[key] = (ledger[key] || 0) - num(r["On Hand"]);
     });
 
-  // ---------------------
-  // CYCLE COUNT = POSITIVE
-  // ---------------------
+  // CYCLE (+)
   cycleData
     .filter(r =>
-      clean(r["Bin"]) === bin &&
-      normDate(r["Timestamp"]) === date
+      clean(r["Bin"]) === selectedBin &&
+      normDate(r["Timestamp"]) === selectedDate
     )
     .forEach(r => {
 
@@ -207,36 +203,35 @@ function runAdjustment(bin, date) {
         clean(r["Bin"])
       ].join("|");
 
-      const qty = num(r["On Hand"]);
-
-      ledger[key] = (ledger[key] || 0) + qty;
+      ledger[key] = (ledger[key] || 0) + num(r["On Hand"]);
     });
 
-  // ---------------------
   // OUTPUT
-  // ---------------------
-  const rows = Object.entries(ledger).map(([key, adj]) => {
-    const [item, lot, exp, b] = key.split("|");
-
-    return { item, lot, exp, bin: b, adj };
+  const rows = Object.entries(ledger).map(([k,v])=>{
+    const [item,lot,exp,bin] = k.split("|");
+    return {item,lot,exp,bin,adj:v};
   });
 
-  rows.sort((a, b) =>
-    a.item.localeCompare(b.item, undefined, { numeric: true }) ||
+  rows.sort((a,b)=>
+    a.item.localeCompare(b.item,undefined,{numeric:true})||
     a.lot.localeCompare(b.lot)
   );
 
-  rows.forEach(r => {
+  const tbody = document.getElementById("results");
+  tbody.innerHTML = "";
+
+  rows.forEach(r=>{
     tbody.innerHTML += `
       <tr>
         <td>${r.item}</td>
         <td>${r.lot}</td>
         <td>${r.exp}</td>
         <td>${r.bin}</td>
-        <td>${r.adj > 0 ? "+" : ""}${r.adj}</td>
-      </tr>
-    `;
+        <td>${r.adj>0?"+":""}${r.adj}</td>
+      </tr>`;
   });
+
+  document.getElementById("step4").style.display = "block";
 }
 
 </script>
