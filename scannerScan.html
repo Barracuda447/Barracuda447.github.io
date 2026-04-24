@@ -6,34 +6,105 @@
 <title>Scanner Counter</title>
 
 <style>
-body { font-family: Arial; }
+body {
+    font-family: Arial;
+    background: rgb(0,0,0);
+    color: rgb(255,224,0);
+    margin: 0;
+    padding: 12px;
+    font-size: 18px;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+h2 {
+    text-align: center;
+    font-size: 26px;
+    margin-bottom: 16px;
+    letter-spacing: 1px;
+}
 
 .hidden { display: none; }
+
+label {
+    font-size: 18px;
+}
+
+input, select {
+    width: 100%;
+    font-size: 20px;
+    padding: 14px;
+    margin: 8px 0;
+    background: rgb(0,0,0);
+    color: rgb(255,224,0);
+    border: 2px solid rgb(255,224,0);
+    border-radius: 6px;
+    box-sizing: border-box;
+}
+
+input:focus, select:focus {
+    outline: none;
+    box-shadow: 0 0 8px rgb(255,224,0);
+}
 
 table {
     border-collapse: collapse;
     margin-top: 20px;
+    width: 100%;
+    font-size: 18px;
 }
 
 td, th {
-    border: 1px solid #ccc;
-    padding: 8px;
+    border: 1px solid rgb(255,224,0);
+    padding: 10px;
+    text-align: center;
+}
+
+th {
+    background: rgb(255,224,0);
+    color: rgb(0,0,0);
+    font-size: 18px;
 }
 
 #errorMsg {
-    color: red;
-    margin-top: 10px;
+    color: rgb(255,224,0);
+    margin-top: 12px;
+    font-size: 18px;
+    text-align: center;
+    min-height: 24px;
 }
 
 .topButtons {
-    margin-top: 10px;
+    margin-top: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
 }
 
 button {
-    margin: 5px;
-    padding: 10px 15px;
-    font-size: 14px;
+    padding: 18px;
+    font-size: 20px;
     cursor: pointer;
+    background: rgb(0,0,0);
+    color: rgb(255,224,0);
+    border: 2px solid rgb(255,224,0);
+    border-radius: 8px;
+    touch-action: manipulation;
+}
+
+button:active {
+    background: rgb(255,224,0);
+    color: rgb(0,0,0);
+}
+
+button:hover {
+    background: rgb(255,224,0);
+    color: rgb(0,0,0);
+}
+
+#skuSection, #scanSection {
+    max-width: 600px;
+    margin: 0 auto;
 }
 
 /* =========================
@@ -42,24 +113,37 @@ button {
 #manualModal {
     position: fixed;
     inset: 0;
-    background: rgba(0,0,0,0.5);
+    background: rgba(0,0,0,0.95);
     display: none;
     align-items: center;
     justify-content: center;
+    padding: 10px;
 }
 
 #manualBox {
-    background: white;
+    background: rgb(0,0,0);
     padding: 20px;
-    width: 320px;
-    border-radius: 8px;
+    width: 100%;
+    max-width: 420px;
+    border: 2px solid rgb(255,224,0);
+    border-radius: 10px;
+}
+
+#manualBox h3 {
+    text-align: center;
+    margin-top: 0;
+    margin-bottom: 12px;
 }
 
 #manualBox input, 
 #manualBox select {
+    font-size: 20px;
+    padding: 14px;
+}
+
+#manualBox button {
     width: 100%;
-    margin: 6px 0;
-    padding: 8px;
+    margin-top: 10px;
 }
 </style>
 </head>
