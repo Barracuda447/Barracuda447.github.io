@@ -11,7 +11,7 @@
 <button onclick="startNewAdjustment()">New Adjustment</button>
 
 <div id="uploadSection" style="display:none; margin-top:15px;">
-  <label>Upload NetSuite Export:</label>
+  <label>Upload NetSuite Export (CSV/TSV):</label>
   <input type="file" id="fileInput" />
 </div>
 
@@ -37,7 +37,7 @@
       <th>Lot</th>
       <th>Expiration</th>
       <th>Bin</th>
-      <th>Adjustment</th>
+      <th>On Hand Adjustment</th>
     </tr>
   </thead>
   <tbody></tbody>
@@ -45,8 +45,9 @@
 
 <script>
 
-// 🔹 Google Sheet CSV (cycle counts)
-const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9buyeY2V9qHg10FJJ3JbuyV-o8xvbF2QEGSLgX-3cIdgwR7fDJoY_BLiiAOQYCUHv0qcQ3fMLVDv-/pub?output=csv";
+// 🔹 Google Sheets CSV (cycle count source)
+const SHEET_URL =
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9buyeY2V9qHg10FJJ3JbuyV-o8xvbF2QEGSLgX-3cIdgwR7fDJoY_BLiiAOQYCUHv0qcQ3fMLVDv-/pub?output=csv";
 
 let netSuiteData = [];
 let cycleData = [];
@@ -73,7 +74,7 @@ function startNewAdjustment() {
 }
 
 // -------------------------
-// NETSUITE UPLOAD (FIXED TSV/CSV AUTO DETECT)
+// NETSUITE FILE LOAD (CSV/TSV SAFE)
 // -------------------------
 document.getElementById('fileInput').addEventListener('change', function(e) {
   const file = e.target.files[0];
@@ -84,7 +85,7 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
     delimiter: "", // auto-detect CSV or TSV
     complete: function(results) {
       netSuiteData = results.data;
-      console.log("NetSuite:", netSuiteData);
+      console.log("NetSuite Loaded:", netSuiteData);
       alert("NetSuite file loaded");
     }
   });
@@ -128,6 +129,7 @@ async function loadCycleData() {
     });
 
   } catch (err) {
+    console.error(err);
     statusEl.innerText = "ERROR: " + err.message;
     statusEl.style.color = "red";
   }
@@ -175,20 +177,20 @@ async function loadCycleDataAndShowOptions() {
 }
 
 // -------------------------
-// MAIN CALCULATION
+// MAIN LOGIC (FIXED ROW-BASED MATCHING)
 // -------------------------
 function runAdjustment(bin, date) {
 
   const tbody = document.querySelector("#resultTable tbody");
   tbody.innerHTML = "";
 
-  // 1. filter cycle data for selected bin + batch
+  // 1. Cycle filter
   const ccFiltered = cycleData.filter(r =>
     clean(r["Bin"]) === bin &&
     normalizeDate(r["Timestamp"]) === date
   );
 
-  // 2. build cycle lookup (SUM duplicates properly)
+  // 2. Build cycle lookup (SUM duplicates)
   let ccMap = {};
 
   ccFiltered.forEach(r => {
@@ -202,12 +204,12 @@ function runAdjustment(bin, date) {
     ccMap[key] = (ccMap[key] || 0) + parseFloat(r["On Hand"] || 0);
   });
 
-  // 3. filter NetSuite for bin
+  // 3. NetSuite filter
   const nsFiltered = netSuiteData.filter(r =>
     clean(r["Bin Number"]) === bin
   );
 
-  // 4. build OUTPUT directly from NetSuite rows
+  // 4. ROW-BASED OUTPUT (IMPORTANT FIX)
   const rows = nsFiltered.map(r => {
 
     const key = [
@@ -231,13 +233,13 @@ function runAdjustment(bin, date) {
     };
   });
 
-  // 5. sort output
+  // 5. sort
   rows.sort((a, b) =>
     a.item.localeCompare(b.item, undefined, { numeric: true }) ||
     a.lot.localeCompare(b.lot)
   );
 
-  // 6. render ALL rows (including zero if you want visibility)
+  // 6. render ALL rows
   rows.forEach(r => {
     tbody.innerHTML += `
       <tr>
@@ -250,6 +252,7 @@ function runAdjustment(bin, date) {
     `;
   });
 }
+
 </script>
 
 </body>
