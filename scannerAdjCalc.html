@@ -11,7 +11,7 @@
 <button onclick="startNewAdjustment()">New Adjustment</button>
 
 <div id="uploadSection" style="display:none; margin-top:15px;">
-  <label>Upload NetSuite Export:</label>
+  <label>Upload NetSuite Export (CSV/TSV):</label>
   <input type="file" id="fileInput" />
 </div>
 
@@ -21,7 +21,7 @@
 </div>
 
 <h3>Status</h3>
-<div id="status"></div>
+<div id="status" style="font-weight:bold;"></div>
 
 <h3>Results</h3>
 <table border="1" id="resultTable">
@@ -31,7 +31,7 @@
       <th>Lot</th>
       <th>Expiration</th>
       <th>Bin</th>
-      <th>Adjustment</th>
+      <th>On Hand Adjustment</th>
     </tr>
   </thead>
   <tbody></tbody>
@@ -39,14 +39,25 @@
 
 <script>
 
+// =====================
+// GOOGLE SHEET SOURCE
+// =====================
 const SHEET_URL =
 "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9buyeY2V9qHg10FJJ3JbuyV-o8xvbF2QEGSLgX-3cIdgwR7fDJoY_BLiiAOQYCUHv0qcQ3fMLVDv-/pub?output=csv";
 
 let netSuiteData = [];
 let cycleData = [];
 
+// =====================
+// HELPERS
+// =====================
 function clean(v) {
   return (v || "").toString().trim();
+}
+
+function num(v) {
+  const n = parseFloat(v);
+  return isNaN(n) ? 0 : n;
 }
 
 function normDate(v) {
@@ -55,40 +66,65 @@ function normDate(v) {
   return d.toISOString().split("T")[0];
 }
 
-// -------------------------
+// =====================
+// START
+// =====================
 function startNewAdjustment() {
   document.getElementById("uploadSection").style.display = "block";
   loadCycleDataAndShowOptions();
 }
 
-// -------------------------
+// =====================
+// NETSUITE UPLOAD
+// =====================
 document.getElementById("fileInput").addEventListener("change", e => {
   Papa.parse(e.target.files[0], {
     header: true,
     skipEmptyLines: true,
     delimiter: "",
+    transformHeader: h => h.trim(),
     complete: r => {
       netSuiteData = r.data;
+      console.log("NetSuite sample:", netSuiteData[0]);
       alert("NetSuite loaded");
     }
   });
 });
 
-// -------------------------
+// =====================
+// LOAD GOOGLE SHEET
+// =====================
 async function loadCycleData() {
-  const res = await fetch(SHEET_URL);
-  const text = await res.text();
+  const statusEl = document.getElementById("status");
 
-  const parsed = Papa.parse(text.trim(), {
-    header: true,
-    skipEmptyLines: true,
-    transformHeader: h => h.trim()
-  });
+  try {
+    statusEl.innerText = "Loading Google Sheet...";
+    statusEl.style.color = "orange";
 
-  cycleData = parsed.data;
+    const res = await fetch(SHEET_URL);
+    const text = await res.text();
+
+    const parsed = Papa.parse(text.trim(), {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: h => h.trim()
+    });
+
+    cycleData = parsed.data;
+
+    statusEl.innerText = "Google Sheet Loaded ✔";
+    statusEl.style.color = "green";
+
+  } catch (err) {
+    console.error(err);
+    statusEl.innerText = "ERROR: " + err.message;
+    statusEl.style.color = "red";
+  }
 }
 
-// -------------------------
+// =====================
+// BUILD BIN + DATE OPTIONS
+// =====================
 async function loadCycleDataAndShowOptions() {
   await loadCycleData();
 
@@ -117,7 +153,6 @@ async function loadCycleDataAndShowOptions() {
 
     const btn = document.createElement("button");
     btn.innerText = `${label}, Bin ${bin}`;
-
     btn.onclick = () => runAdjustment(bin, date);
 
     div.appendChild(btn);
@@ -126,9 +161,9 @@ async function loadCycleDataAndShowOptions() {
   document.getElementById("binDateSelector").style.display = "block";
 }
 
-// -------------------------
-// CORE LEDGER BUILD (NEW LOGIC)
-// -------------------------
+// =====================
+// CORE LEDGER LOGIC (FIXED)
+// =====================
 function runAdjustment(bin, date) {
 
   const tbody = document.querySelector("#resultTable tbody");
@@ -136,46 +171,50 @@ function runAdjustment(bin, date) {
 
   const ledger = {};
 
-  // -------------------------
-  // 1. NETSUITE (- ON HAND)
-  // -------------------------
-  const nsRows = netSuiteData.filter(r =>
-    clean(r["Bin Number"]) === bin
-  );
+  // ---------------------
+  // NETSUITE = NEGATIVE
+  // ---------------------
+  netSuiteData
+    .filter(r => clean(r["Bin Number"]) === bin)
+    .forEach(r => {
 
-  nsRows.forEach(r => {
-    const key = [
-      clean(r["Item"]),
-      clean(r["LOT"]),
-      normDate(r["Expiration Date"]),
-      clean(r["Bin Number"])
-    ].join("|");
+      const key = [
+        clean(r["Item"]),
+        clean(r["LOT"]),
+        normDate(r["Expiration Date"]),
+        clean(r["Bin Number"])
+      ].join("|");
 
-    ledger[key] = (ledger[key] || 0) - parseFloat(r["On Hand"] || 0);
-  });
+      const qty = num(r["On Hand"]);
 
-  // -------------------------
-  // 2. CYCLE COUNT (+ ON HAND)
-  // -------------------------
-  const ccRows = cycleData.filter(r =>
-    clean(r["Bin"]) === bin &&
-    normDate(r["Timestamp"]) === date
-  );
+      ledger[key] = (ledger[key] || 0) - qty;
+    });
 
-  ccRows.forEach(r => {
-    const key = [
-      clean(r["SKU"]),
-      clean(r["Lot"]),
-      normDate(r["Expiration Date"]),
-      clean(r["Bin"])
-    ].join("|");
+  // ---------------------
+  // CYCLE COUNT = POSITIVE
+  // ---------------------
+  cycleData
+    .filter(r =>
+      clean(r["Bin"]) === bin &&
+      normDate(r["Timestamp"]) === date
+    )
+    .forEach(r => {
 
-    ledger[key] = (ledger[key] || 0) + parseFloat(r["On Hand"] || 0);
-  });
+      const key = [
+        clean(r["SKU"]),
+        clean(r["Lot"]),
+        normDate(r["Expiration Date"]),
+        clean(r["Bin"])
+      ].join("|");
 
-  // -------------------------
-  // 3. OUTPUT
-  // -------------------------
+      const qty = num(r["On Hand"]);
+
+      ledger[key] = (ledger[key] || 0) + qty;
+    });
+
+  // ---------------------
+  // OUTPUT
+  // ---------------------
   const rows = Object.entries(ledger).map(([key, adj]) => {
     const [item, lot, exp, b] = key.split("|");
 
