@@ -182,6 +182,28 @@ function normDate(v){
 }
 
 // =====================
+// DISPLAY DATE FORMAT
+// =====================
+function formatDisplayDate(iso){
+
+  if (!iso) return "";
+
+  const d = new Date(iso + "T00:00:00");
+  if (isNaN(d)) return iso;
+
+  const day = String(d.getDate()).padStart(2,"0");
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const mon = months[d.getMonth()];
+  const yr = String(d.getFullYear()).slice(-2);
+
+  return `${day}-${mon}-${yr}`;
+}
+
+function copyToClipboard(text){
+  navigator.clipboard.writeText(text);
+}
+
+// =====================
 // KEY
 // =====================
 function key(item, lot, exp, bin){
@@ -284,7 +306,7 @@ function buildBatchOptions(){
 }
 
 // =====================
-// CORE LOGIC (UNCHANGED)
+// CORE LOGIC (UPDATED ONLY)
 // =====================
 function runCalculation(){
 
@@ -307,24 +329,39 @@ function runCalculation(){
       ledger[k] = (ledger[k] || 0) + num(r["On Hand"]);
     });
 
-  const rows = Object.entries(ledger)
+  let rows = Object.entries(ledger)
     .map(([k,v])=>{
       const [item,lot,exp,bin] = k.split("|");
       return {item,lot,exp,bin,adj:v};
     })
     .filter(r => r.adj !== 0);
 
+  // SORT BY SKU
+  rows.sort((a,b)=> a.item.localeCompare(b.item));
+
   const tbody = document.getElementById("results");
   tbody.innerHTML = "";
+
+  function cell(val){
+    const safe = val ?? "";
+    return `
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span>${safe}</span>
+        <button onclick="copyToClipboard('${String(safe).replace(/'/g,"\\'")}')"
+          style="padding:4px 8px;border-radius:6px;font-size:12px;">
+          Copy
+        </button>
+      </div>`;
+  }
 
   rows.forEach(r=>{
     tbody.innerHTML += `
       <tr>
-        <td>${r.item}</td>
-        <td>${r.lot}</td>
-        <td>${r.exp}</td>
-        <td>${r.bin}</td>
-        <td>${r.adj>0?"+":""}${r.adj}</td>
+        <td>${cell(r.item)}</td>
+        <td>${cell(r.lot)}</td>
+        <td>${cell(formatDisplayDate(r.exp))}</td>
+        <td>${cell(r.bin)}</td>
+        <td>${cell(r.adj>0?("+"+r.adj):r.adj)}</td>
       </tr>`;
   });
 
