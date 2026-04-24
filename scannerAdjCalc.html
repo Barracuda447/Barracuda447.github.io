@@ -3,10 +3,7 @@
 <head>
   <title>Scanner Adjustment Wizard</title>
 
-  <!-- Google Sheet CSV parser -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
-
-  <!-- XLS/XLSX parser (CRITICAL FIX) -->
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
 
@@ -22,7 +19,7 @@
 </div>
 
 <div id="step2" style="display:none;">
-  <h3>Upload NetSuite XLS/XLSX Export</h3>
+  <h3>Upload NetSuite XLS/XLSX</h3>
   <input type="file" id="fileInput" accept=".xls,.xlsx">
 </div>
 
@@ -51,7 +48,7 @@
 <script>
 
 // =====================
-// DATA STORAGE
+// STATE
 // =====================
 let cycleData = [];
 let netSuiteData = [];
@@ -70,29 +67,46 @@ function num(v){
   return isNaN(n) ? 0 : n;
 }
 
-// Normalize BOTH formats:
-// NetSuite: 30-4-27
-// Google: 2027-04-30
+// =====================
+// DATE NORMALIZER (FIXED)
+// =====================
 function normDate(v){
+
   if (!v) return "";
 
   const s = v.toString().trim();
 
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
-
-  const parts = s.split("-");
-  if (parts.length === 3 && parts[0].length <= 2) {
-    const d = parts[0].padStart(2,"0");
-    const m = parts[1].padStart(2,"0");
-    const y = "20" + parts[2];
-    return `${y}-${m}-${d}`;
+  // ISO (Google Sheet)
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return s;
   }
 
-  const dt = new Date(s);
-  if (isNaN(dt)) return "";
-  return dt.toISOString().split("T")[0];
+  // NetSuite: 23-10-29 (DD-MM-YY)
+  if (/^\d{1,2}-\d{1,2}-\d{2}$/.test(s)) {
+
+    const parts = s.split("-");
+
+    const day = parts[0].padStart(2, "0");
+    const month = parts[1].padStart(2, "0");
+    const year = "20" + parts[2];
+
+    return `${year}-${month}-${day}`;
+  }
+
+  // Excel numeric date fallback
+  if (!isNaN(v) && typeof v === "number") {
+    const d = new Date(Date.UTC(1899, 11, 30) + v * 86400000);
+    return d.toISOString().split("T")[0];
+  }
+
+  const d = new Date(v);
+  if (isNaN(d)) return "";
+  return d.toISOString().split("T")[0];
 }
 
+// =====================
+// KEY BUILDER
+// =====================
 function key(item, lot, exp, bin){
   return [
     clean(item),
@@ -111,7 +125,7 @@ function startFlow(){
 }
 
 // =====================
-// STEP 1 - GOOGLE SHEET
+// GOOGLE SHEET
 // =====================
 async function loadGoogleSheet(){
 
@@ -127,12 +141,11 @@ async function loadGoogleSheet(){
   cycleData = parsed.data;
 
   document.getElementById("status").innerText = "Google Sheet Loaded ✔";
-
   document.getElementById("step2").style.display = "block";
 }
 
 // =====================
-// STEP 2 - NETSUITE XLS/XLSX (FIXED)
+// NETSUITE XLS/XLSX LOAD
 // =====================
 document.getElementById("fileInput").addEventListener("change", e => {
 
@@ -145,21 +158,16 @@ document.getElementById("fileInput").addEventListener("change", e => {
 
     const workbook = XLSX.read(data, { type: "array" });
 
-    const sheetName = workbook.SheetNames[0];
-    const sheet = workbook.Sheets[sheetName];
+    const sheet = workbook.Sheets[workbook.SheetNames[0]];
 
     const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
-    console.log("RAW NETSUITE SAMPLE:", json[0]);
-
-    // Normalize NetSuite columns
     netSuiteData = json.map(r => ({
       Item: r["Item"],
       Lot: r["LOT"],
       Expiration: r["Expiration Date"],
       Bin: r["Bin Number"],
-      OnHand: r["On Hand"],
-      Available: r["Available"]
+      OnHand: r["On Hand"]
     }));
 
     buildBatchOptions();
@@ -170,7 +178,7 @@ document.getElementById("fileInput").addEventListener("change", e => {
 });
 
 // =====================
-// STEP 3 - BATCH OPTIONS
+// BUILD BATCH OPTIONS
 // =====================
 function buildBatchOptions(){
 
@@ -213,15 +221,15 @@ function buildBatchOptions(){
 }
 
 // =====================
-// STEP 4 - LEDGER (NOW RELIABLE)
+// CORE CALCULATION
 // =====================
 function runCalculation(){
 
   const ledger = {};
 
-  // ------------------
+  // -------------------
   // NETSUITE (-)
-  // ------------------
+  // -------------------
   netSuiteData
     .filter(r => clean(r.Bin) === selectedBin)
     .forEach(r => {
@@ -236,9 +244,9 @@ function runCalculation(){
       ledger[k] = (ledger[k] || 0) - num(r.OnHand);
     });
 
-  // ------------------
+  // -------------------
   // CYCLE (+)
-  // ------------------
+  // -------------------
   cycleData
     .filter(r =>
       clean(r["Bin"]) === selectedBin &&
@@ -256,9 +264,9 @@ function runCalculation(){
       ledger[k] = (ledger[k] || 0) + num(r["On Hand"]);
     });
 
-  // ------------------
+  // -------------------
   // OUTPUT
-  // ------------------
+  // -------------------
   const rows = Object.entries(ledger).map(([k,v])=>{
     const [item,lot,exp,bin] = k.split("|");
     return {item,lot,exp,bin,adj:v};
