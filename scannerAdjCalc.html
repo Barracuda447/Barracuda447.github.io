@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Scanner Adjustment Calculator</title>
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+<body>
+
+<h2>Scanner Adjustment Calculator</h2>
+
+<button onclick="startNewAdjustment()">New Adjustment</button>
+
+<div id="uploadSection" style="display:none; margin-top:15px;">
+  <label>Upload NetSuite Export (CSV):</label>
+  <input type="file" id="fileInput" />
+</div>
+
+<div id="binDateSelector" style="display:none; margin-top:20px;">
+  <h3>Select Cycle Count Batch</h3>
+  <div id="options"></div>
+</div>
+
+<!-- 🔍 STATUS PANEL -->
+<h3>Sheet Status</h3>
+<div id="status" style="font-weight:bold; margin-bottom:10px;"></div>
+
+<h4>Raw Cycle Sheet Preview (Debug)</h4>
+<table border="1" id="debugTable">
+  <thead></thead>
+  <tbody></tbody>
+</table>
+
+<h3>Results</h3>
+<table border="1" id="resultTable">
+  <thead>
+    <tr>
+      <th>SKU</th>
+      <th>Lot</th>
+      <th>Expiration</th>
+      <th>System Qty</th>
+      <th>Counted Qty</th>
+      <th>Adjustment</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script>
+
+// 🔹 YOUR GOOGLE SHEET CSV LINK
+const SHEET_URL = "PASTE_YOUR_CSV_URL_HERE";
+
+let netSuiteData = [];
+let cycleData = [];
+
+// -------------------------
+// START FLOW
+// -------------------------
+function startNewAdjustment() {
+  document.getElementById("uploadSection").style.display = "block";
+  loadCycleDataAndShowOptions();
+}
+
+// -------------------------
+// NETSUITE FILE UPLOAD
+// -------------------------
+document.getElementById('fileInput').addEventListener('change', function(e) {
+  const file = e.target.files[0];
+
+  Papa.parse(file, {
+    header: true,
+    skipEmptyLines: true,
+    complete: function(results) {
+      netSuiteData = results.data;
+      alert("NetSuite file loaded");
+    }
+  });
+});
+
+// -------------------------
+// LOAD GOOGLE SHEET + DEBUG UI
+// -------------------------
+async function loadCycleData() {
+  const statusEl = document.getElementById("status");
+  const thead = document.querySelector("#debugTable thead");
+  const tbody = document.querySelector("#debugTable tbody");
+
+  try {
+    statusEl.innerText = "Loading Google Sheet...";
+    statusEl.style.color = "orange";
+
+    const res = await fetch(SHEET_URL);
+
+    if (!res.ok) {
+      throw new Error("HTTP Error: " + res.status);
+    }
+
+    const text = await res.text();
+
+    if (!text || text.length < 10) {
+      throw new Error("Empty response from sheet");
+    }
+
+    const parsed = Papa.parse(text.trim(), {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: h => h.trim()
+    });
+
+    if (!parsed.data || parsed.data.length === 0) {
+      throw new Error("No data parsed from sheet");
+    }
+
+    cycleData = parsed.data;
+
+    // SUCCESS STATUS
+    statusEl.innerText = "Google Sheet Loaded Successfully ✔";
+    statusEl.style.color = "green";
+
+    // DEBUG TABLE HEADERS
+    const headers = parsed.meta.fields || Object.keys(cycleData[0]);
+
+    thead.innerHTML = "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>";
+
+    // DEBUG TABLE ROWS (first 10)
+    tbody.innerHTML = "";
+
+    cycleData.slice(0, 10).forEach(row => {
+      const tr = "<tr>" + headers.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
+      tbody.innerHTML += tr;
+    });
+
+  } catch (err) {
+    console.error(err);
+
+    statusEl.innerText = "ERROR loading Google Sheet: " + err.message;
+    statusEl.style.color = "red";
+
+    document.querySelector("#debugTable thead").innerHTML = "";
+    document.querySelector("#debugTable tbody").innerHTML = "";
+  }
+}
+
+// -------------------------
+// LOAD BATCH OPTIONS (BIN + DATE)
+// -------------------------
+async function loadCycleDataAndShowOptions() {
+  await loadCycleData();
+
+  const map = {};
+
+  cycleData.forEach(r => {
+    const bin = r["Bin"];
+    const date = normalizeDate(r["Timestamp"]);
+
+    if (!bin || !date) return;
+
+    map[`${date}|${bin}`] = true;
+  });
+
+  const optionsDiv = document.getElementById("options");
+  optionsDiv.innerHTML = "";
+
+  Object.keys(map)
+    .sort()
+    .forEach(key => {
+      const [date, bin] = key.split("|");
+
+      const d = new Date(date);
+      const pretty = d.toLocaleDateString(undefined, {
+        month: "long",
+        day: "numeric"
+      });
+
+      const btn = document.createElement("button");
+      btn.innerText = `${pretty}, Bin ${bin}`;
+      btn.style.margin = "5px";
+
+      btn.onclick = () => runAdjustment(bin, date);
+
+      optionsDiv.appendChild(btn);
+    });
+
+  document.getElementById("binDateSelector").style.display = "block";
+}
+
+// -------------------------
+// DATE NORMALIZER
+// -------------------------
+function normalizeDate(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return "";
+  return d.toISOString().split("T")[0];
+}
+
+// -------------------------
+// MAIN CALCULATION
+// -------------------------
+function runAdjustment(bin, date) {
+
+  const ccFiltered = cycleData.filter(r =>
+    r["Bin"] === bin &&
+    normalizeDate(r["Timestamp"]) === date
+  );
+
+  const nsFiltered = netSuiteData.filter(r =>
+    r["Bin Number"] === bin
+  );
+
+  let nsMap = {};
+  nsFiltered.forEach(r => {
+    const key = [
+      (r["Item"] || "").trim(),
+      (r["LOT"] || "").trim(),
+      normalizeDate(r["Expiration Date"])
+    ].join("|");
+
+    nsMap[key] = parseFloat(r["On Hand"] || 0);
+  });
+
+  let ccMap = {};
+  ccFiltered.forEach(r => {
+    const key = [
+      (r["SKU"] || "").trim(),
+      (r["Lot"] || "").trim(),
+      normalizeDate(r["Expiration Date"])
+    ].join("|");
+
+    ccMap[key] = (ccMap[key] || 0) + parseFloat(r["On Hand"] || 0);
+  });
+
+  const allKeys = new Set([...Object.keys(nsMap), ...Object.keys(ccMap)]);
+
+  const rows = Array.from(allKeys).map(key => {
+    const [sku, lot, exp] = key.split("|");
+
+    return {
+      sku,
+      lot,
+      exp,
+      systemQty: nsMap[key] || 0,
+      countedQty: ccMap[key] || 0,
+      diff: (ccMap[key] || 0) - (nsMap[key] || 0)
+    };
+  });
+
+  rows.sort((a, b) =>
+    a.sku.localeCompare(b.sku, undefined, { numeric: true }) ||
+    a.lot.localeCompare(b.lot) ||
+    a.exp.localeCompare(b.exp)
+  );
+
+  const tbody = document.querySelector("#resultTable tbody");
+  tbody.innerHTML = "";
+
+  rows.forEach(r => {
+    if (r.diff !== 0) {
+      tbody.innerHTML += `
+        <tr>
+          <td>${r.sku}</td>
+          <td>${r.lot}</td>
+          <td>${r.exp}</td>
+          <td>${r.systemQty}</td>
+          <td>${r.countedQty}</td>
+          <td>${r.diff}</td>
+        </tr>
+      `;
+    }
+  });
+}
+
+</script>
+
+</body>
+</html>
