@@ -1,24 +1,24 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Scanner Adjustment Wizard</title>
+  <title>Scanner Adjustment Calculator</title>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
 
-<h2>Scanner Adjustment Wizard</h2>
+<h2>Scanner Adjustment Calculator</h2>
 
 <button onclick="startFlow()">Create New Adjustment</button>
 
 <!-- STEP 1 -->
 <div id="step1" style="display:none;">
-  <h3>Step 1: Connecting to Google Sheet...</h3>
+  <h3>Step 1: Loading Google Sheet...</h3>
   <div id="status"></div>
 </div>
 
 <!-- STEP 2 -->
 <div id="step2" style="display:none;">
-  <h3>Step 2: Upload NetSuite File</h3>
+  <h3>Step 2: Upload NetSuite Export</h3>
   <input type="file" id="fileInput">
 </div>
 
@@ -48,7 +48,7 @@
 <script>
 
 // =====================
-// DATA STORAGE
+// DATA
 // =====================
 let cycleData = [];
 let netSuiteData = [];
@@ -56,23 +56,55 @@ let selectedBin = "";
 let selectedDate = "";
 
 // =====================
-// HELPERS
+// HELPERS (CRITICAL FIX AREA)
 // =====================
-function clean(v){ return (v||"").toString().trim(); }
+function clean(v){
+  return (v || "").toString().trim().toUpperCase();
+}
 
 function num(v){
   const n = parseFloat(v);
   return isNaN(n) ? 0 : n;
 }
 
+// Normalize BOTH formats:
+// - NetSuite: 30-4-27
+// - Google: 2027-04-30
 function normDate(v){
-  const d = new Date(v);
+
+  if (!v) return "";
+
+  const s = v.toString().trim();
+
+  // already ISO
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // NetSuite format dd-mm-yy
+  const parts = s.split("-");
+  if (parts.length === 3 && parts[0].length <= 2) {
+    let d = parts[0].padStart(2,"0");
+    let m = parts[1].padStart(2,"0");
+    let y = "20" + parts[2];
+    return `${y}-${m}-${d}`;
+  }
+
+  const d = new Date(s);
   if (isNaN(d)) return "";
   return d.toISOString().split("T")[0];
 }
 
+// Unified key builder (MOST IMPORTANT PART)
+function makeKey(item, lot, exp, bin){
+  return [
+    clean(item),
+    clean(lot),
+    normDate(exp),
+    clean(bin)
+  ].join("|");
+}
+
 // =====================
-// STEP FLOW CONTROLLER
+// FLOW START
 // =====================
 function startFlow(){
   document.getElementById("step1").style.display = "block";
@@ -80,12 +112,11 @@ function startFlow(){
 }
 
 // =====================
-// STEP 1: LOAD GOOGLE SHEET
+// STEP 1 - GOOGLE SHEET
 // =====================
 async function loadGoogleSheet(){
 
   const status = document.getElementById("status");
-  status.innerText = "Loading...";
 
   const res = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9buyeY2V9qHg10FJJ3JbuyV-o8xvbF2QEGSLgX-3cIdgwR7fDJoY_BLiiAOQYCUHv0qcQ3fMLVDv-/pub?output=csv");
   const text = await res.text();
@@ -98,14 +129,13 @@ async function loadGoogleSheet(){
 
   cycleData = parsed.data;
 
-  status.innerText = "Google Sheet Connected ✔";
+  status.innerText = "Google Sheet Loaded ✔";
 
-  // move to step 2
   document.getElementById("step2").style.display = "block";
 }
 
 // =====================
-// STEP 2: NETSUITE UPLOAD
+// STEP 2 - NETSUITE FILE
 // =====================
 document.getElementById("fileInput").addEventListener("change", e => {
 
@@ -126,7 +156,7 @@ document.getElementById("fileInput").addEventListener("change", e => {
 });
 
 // =====================
-// STEP 3: BUILD BIN + DATE OPTIONS
+// STEP 3 - BATCH LIST
 // =====================
 function buildBatchOptions(){
 
@@ -135,6 +165,7 @@ function buildBatchOptions(){
   cycleData.forEach(r => {
     const bin = clean(r["Bin"]);
     const date = normDate(r["Timestamp"]);
+
     if (!bin || !date) return;
 
     map[`${date}|${bin}`] = true;
@@ -148,6 +179,7 @@ function buildBatchOptions(){
     const [date, bin] = k.split("|");
 
     const d = new Date(date + "T00:00:00");
+
     const label = d.toLocaleDateString(undefined,{
       month:"long",
       day:"numeric"
@@ -167,28 +199,32 @@ function buildBatchOptions(){
 }
 
 // =====================
-// STEP 4: CORE LOGIC
+// STEP 4 - CORE LEDGER
 // =====================
 function runCalculation(){
 
   const ledger = {};
 
-  // NETSUITE (-)
+  // -------------------
+  // NETSUITE (- SIDE)
+  // -------------------
   netSuiteData
     .filter(r => clean(r["Bin Number"]) === selectedBin)
     .forEach(r => {
 
-      const key = [
-        clean(r["Item"]),
-        clean(r["LOT"]),
-        normDate(r["Expiration Date"]),
-        clean(r["Bin Number"])
-      ].join("|");
+      const k = makeKey(
+        r["Item"],
+        r["LOT"],
+        r["Expiration Date"],
+        r["Bin Number"]
+      );
 
-      ledger[key] = (ledger[key] || 0) - num(r["On Hand"]);
+      ledger[k] = (ledger[k] || 0) - num(r["On Hand"]);
     });
 
-  // CYCLE (+)
+  // -------------------
+  // CYCLE (+ SIDE)
+  // -------------------
   cycleData
     .filter(r =>
       clean(r["Bin"]) === selectedBin &&
@@ -196,24 +232,26 @@ function runCalculation(){
     )
     .forEach(r => {
 
-      const key = [
-        clean(r["SKU"]),
-        clean(r["Lot"]),
-        normDate(r["Expiration Date"]),
-        clean(r["Bin"])
-      ].join("|");
+      const k = makeKey(
+        r["SKU"],
+        r["Lot"],
+        r["Expiration Date"],
+        r["Bin"]
+      );
 
-      ledger[key] = (ledger[key] || 0) + num(r["On Hand"]);
+      ledger[k] = (ledger[k] || 0) + num(r["On Hand"]);
     });
 
+  // -------------------
   // OUTPUT
+  // -------------------
   const rows = Object.entries(ledger).map(([k,v])=>{
     const [item,lot,exp,bin] = k.split("|");
     return {item,lot,exp,bin,adj:v};
   });
 
   rows.sort((a,b)=>
-    a.item.localeCompare(b.item,undefined,{numeric:true})||
+    a.item.localeCompare(b.item,undefined,{numeric:true}) ||
     a.lot.localeCompare(b.lot)
   );
 
