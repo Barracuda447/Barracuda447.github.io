@@ -11,7 +11,7 @@
 <button onclick="startNewAdjustment()">New Adjustment</button>
 
 <div id="uploadSection" style="display:none; margin-top:15px;">
-  <label>Upload NetSuite Export (CSV):</label>
+  <label>Upload NetSuite Export:</label>
   <input type="file" id="fileInput" />
 </div>
 
@@ -20,9 +20,8 @@
   <div id="options"></div>
 </div>
 
-<!-- 🔍 STATUS PANEL -->
 <h3>Sheet Status</h3>
-<div id="status" style="font-weight:bold; margin-bottom:10px;"></div>
+<div id="status" style="font-weight:bold;"></div>
 
 <h4>Raw Cycle Sheet Preview (Debug)</h4>
 <table border="1" id="debugTable">
@@ -34,11 +33,10 @@
 <table border="1" id="resultTable">
   <thead>
     <tr>
-      <th>SKU</th>
+      <th>Item</th>
       <th>Lot</th>
       <th>Expiration</th>
-      <th>System Qty</th>
-      <th>Counted Qty</th>
+      <th>Bin</th>
       <th>Adjustment</th>
     </tr>
   </thead>
@@ -47,14 +45,27 @@
 
 <script>
 
-// 🔹 YOUR GOOGLE SHEET CSV LINK
+// 🔹 Google Sheet CSV (cycle counts)
 const SHEET_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9buyeY2V9qHg10FJJ3JbuyV-o8xvbF2QEGSLgX-3cIdgwR7fDJoY_BLiiAOQYCUHv0qcQ3fMLVDv-/pub?output=csv";
 
 let netSuiteData = [];
 let cycleData = [];
 
 // -------------------------
-// START FLOW
+// HELPERS
+// -------------------------
+function clean(v) {
+  return (v || "").toString().trim();
+}
+
+function normalizeDate(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return "";
+  return d.toISOString().split("T")[0];
+}
+
+// -------------------------
+// START
 // -------------------------
 function startNewAdjustment() {
   document.getElementById("uploadSection").style.display = "block";
@@ -62,7 +73,7 @@ function startNewAdjustment() {
 }
 
 // -------------------------
-// NETSUITE FILE UPLOAD
+// NETSUITE UPLOAD (FIXED TSV/CSV AUTO DETECT)
 // -------------------------
 document.getElementById('fileInput').addEventListener('change', function(e) {
   const file = e.target.files[0];
@@ -70,15 +81,17 @@ document.getElementById('fileInput').addEventListener('change', function(e) {
   Papa.parse(file, {
     header: true,
     skipEmptyLines: true,
+    delimiter: "", // auto-detect CSV or TSV
     complete: function(results) {
       netSuiteData = results.data;
+      console.log("NetSuite:", netSuiteData);
       alert("NetSuite file loaded");
     }
   });
 });
 
 // -------------------------
-// LOAD GOOGLE SHEET + DEBUG UI
+// LOAD GOOGLE SHEET
 // -------------------------
 async function loadCycleData() {
   const statusEl = document.getElementById("status");
@@ -90,16 +103,7 @@ async function loadCycleData() {
     statusEl.style.color = "orange";
 
     const res = await fetch(SHEET_URL);
-
-    if (!res.ok) {
-      throw new Error("HTTP Error: " + res.status);
-    }
-
     const text = await res.text();
-
-    if (!text || text.length < 10) {
-      throw new Error("Empty response from sheet");
-    }
 
     const parsed = Papa.parse(text.trim(), {
       header: true,
@@ -107,42 +111,30 @@ async function loadCycleData() {
       transformHeader: h => h.trim()
     });
 
-    if (!parsed.data || parsed.data.length === 0) {
-      throw new Error("No data parsed from sheet");
-    }
-
     cycleData = parsed.data;
 
-    // SUCCESS STATUS
-    statusEl.innerText = "Google Sheet Loaded Successfully ✔";
+    statusEl.innerText = "Google Sheet Loaded ✔";
     statusEl.style.color = "green";
 
-    // DEBUG TABLE HEADERS
-    const headers = parsed.meta.fields || Object.keys(cycleData[0]);
+    const headers = parsed.meta.fields;
 
     thead.innerHTML = "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>";
 
-    // DEBUG TABLE ROWS (first 10)
     tbody.innerHTML = "";
-
     cycleData.slice(0, 10).forEach(row => {
-      const tr = "<tr>" + headers.map(h => `<td>${row[h] || ""}</td>`).join("") + "</tr>";
-      tbody.innerHTML += tr;
+      tbody.innerHTML += "<tr>" +
+        headers.map(h => `<td>${row[h] || ""}</td>`).join("") +
+      "</tr>";
     });
 
   } catch (err) {
-    console.error(err);
-
-    statusEl.innerText = "ERROR loading Google Sheet: " + err.message;
+    statusEl.innerText = "ERROR: " + err.message;
     statusEl.style.color = "red";
-
-    document.querySelector("#debugTable thead").innerHTML = "";
-    document.querySelector("#debugTable tbody").innerHTML = "";
   }
 }
 
 // -------------------------
-// LOAD BATCH OPTIONS (BIN + DATE)
+// BUILD BATCH LIST
 // -------------------------
 async function loadCycleDataAndShowOptions() {
   await loadCycleData();
@@ -150,7 +142,7 @@ async function loadCycleDataAndShowOptions() {
   const map = {};
 
   cycleData.forEach(r => {
-    const bin = r["Bin"];
+    const bin = clean(r["Bin"]);
     const date = normalizeDate(r["Timestamp"]);
 
     if (!bin || !date) return;
@@ -161,36 +153,25 @@ async function loadCycleDataAndShowOptions() {
   const optionsDiv = document.getElementById("options");
   optionsDiv.innerHTML = "";
 
-  Object.keys(map)
-    .sort()
-    .forEach(key => {
-      const [date, bin] = key.split("|");
+  Object.keys(map).sort().forEach(key => {
+    const [date, bin] = key.split("|");
 
-      const d = new Date(date);
-      const pretty = d.toLocaleDateString(undefined, {
-        month: "long",
-        day: "numeric"
-      });
-
-      const btn = document.createElement("button");
-      btn.innerText = `${pretty}, Bin ${bin}`;
-      btn.style.margin = "5px";
-
-      btn.onclick = () => runAdjustment(bin, date);
-
-      optionsDiv.appendChild(btn);
+    const d = new Date(date + "T00:00:00");
+    const pretty = d.toLocaleDateString(undefined, {
+      month: "long",
+      day: "numeric"
     });
 
-  document.getElementById("binDateSelector").style.display = "block";
-}
+    const btn = document.createElement("button");
+    btn.innerText = `${pretty}, Bin ${bin}`;
+    btn.style.margin = "5px";
 
-// -------------------------
-// DATE NORMALIZER
-// -------------------------
-function normalizeDate(dateStr) {
-  const d = new Date(dateStr);
-  if (isNaN(d)) return "";
-  return d.toISOString().split("T")[0];
+    btn.onclick = () => runAdjustment(bin, date);
+
+    optionsDiv.appendChild(btn);
+  });
+
+  document.getElementById("binDateSelector").style.display = "block";
 }
 
 // -------------------------
@@ -199,20 +180,21 @@ function normalizeDate(dateStr) {
 function runAdjustment(bin, date) {
 
   const ccFiltered = cycleData.filter(r =>
-    r["Bin"] === bin &&
+    clean(r["Bin"]) === bin &&
     normalizeDate(r["Timestamp"]) === date
   );
 
   const nsFiltered = netSuiteData.filter(r =>
-    r["Bin Number"] === bin
+    clean(r["Bin Number"]) === bin
   );
 
   let nsMap = {};
   nsFiltered.forEach(r => {
     const key = [
-      (r["Item"] || "").trim(),
-      (r["LOT"] || "").trim(),
-      normalizeDate(r["Expiration Date"])
+      clean(r["Item"]),
+      clean(r["LOT"]),
+      normalizeDate(r["Expiration Date"]),
+      clean(r["Bin Number"])
     ].join("|");
 
     nsMap[key] = parseFloat(r["On Hand"] || 0);
@@ -221,48 +203,51 @@ function runAdjustment(bin, date) {
   let ccMap = {};
   ccFiltered.forEach(r => {
     const key = [
-      (r["SKU"] || "").trim(),
-      (r["Lot"] || "").trim(),
-      normalizeDate(r["Expiration Date"])
+      clean(r["SKU"]),
+      clean(r["Lot"]),
+      normalizeDate(r["Expiration Date"]),
+      clean(r["Bin"])
     ].join("|");
 
-    ccMap[key] = (ccMap[key] || 0) + parseFloat(r["On Hand"] || 0);
+    ccMap[key] = parseFloat(r["On Hand"] || 0);
   });
 
   const allKeys = new Set([...Object.keys(nsMap), ...Object.keys(ccMap)]);
 
   const rows = Array.from(allKeys).map(key => {
-    const [sku, lot, exp] = key.split("|");
+    const [item, lot, exp, binKey] = key.split("|");
+
+    const systemQty = nsMap[key] || 0;
+    const countedQty = ccMap[key] || 0;
+
+    const adjustment = countedQty - systemQty;
 
     return {
-      sku,
+      item,
       lot,
       exp,
-      systemQty: nsMap[key] || 0,
-      countedQty: ccMap[key] || 0,
-      diff: (ccMap[key] || 0) - (nsMap[key] || 0)
+      bin: binKey,
+      adjustment
     };
   });
 
   rows.sort((a, b) =>
-    a.sku.localeCompare(b.sku, undefined, { numeric: true }) ||
-    a.lot.localeCompare(b.lot) ||
-    a.exp.localeCompare(b.exp)
+    a.item.localeCompare(b.item, undefined, { numeric: true }) ||
+    a.lot.localeCompare(b.lot)
   );
 
   const tbody = document.querySelector("#resultTable tbody");
   tbody.innerHTML = "";
 
   rows.forEach(r => {
-    if (r.diff !== 0) {
+    if (r.adjustment !== 0) {
       tbody.innerHTML += `
         <tr>
-          <td>${r.sku}</td>
+          <td>${r.item}</td>
           <td>${r.lot}</td>
           <td>${r.exp}</td>
-          <td>${r.systemQty}</td>
-          <td>${r.countedQty}</td>
-          <td>${r.diff}</td>
+          <td>${r.bin}</td>
+          <td>${r.adjustment > 0 ? "+" : ""}${r.adjustment}</td>
         </tr>
       `;
     }
