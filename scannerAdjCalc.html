@@ -1,36 +1,33 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Scanner Adjustment Calculator</title>
+  <title>Scanner Adjustment Wizard</title>
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 </head>
 <body>
 
-<h2>Scanner Adjustment Calculator</h2>
+<h2>Scanner Adjustment Wizard</h2>
 
 <button onclick="startFlow()">Create New Adjustment</button>
 
-<!-- STEP 1 -->
 <div id="step1" style="display:none;">
-  <h3>Step 1: Loading Google Sheet...</h3>
+  <h3>Loading Google Sheet...</h3>
   <div id="status"></div>
 </div>
 
-<!-- STEP 2 -->
 <div id="step2" style="display:none;">
-  <h3>Step 2: Upload NetSuite Export</h3>
+  <h3>Upload NetSuite Export</h3>
   <input type="file" id="fileInput">
 </div>
 
-<!-- STEP 3 -->
 <div id="step3" style="display:none;">
-  <h3>Step 3: Select Cycle Batch</h3>
+  <h3>Select Cycle Batch</h3>
   <div id="batchOptions"></div>
 </div>
 
-<!-- STEP 4 -->
 <div id="step4" style="display:none;">
-  <h3>Step 4: Adjustments</h3>
+  <h3>Adjustment Results</h3>
+
   <table border="1">
     <thead>
       <tr>
@@ -56,7 +53,7 @@ let selectedBin = "";
 let selectedDate = "";
 
 // =====================
-// HELPERS (CRITICAL FIX AREA)
+// HELPERS
 // =====================
 function clean(v){
   return (v || "").toString().trim().toUpperCase();
@@ -67,34 +64,31 @@ function num(v){
   return isNaN(n) ? 0 : n;
 }
 
-// Normalize BOTH formats:
-// - NetSuite: 30-4-27
-// - Google: 2027-04-30
+// Normalize both formats safely
 function normDate(v){
-
   if (!v) return "";
 
   const s = v.toString().trim();
 
-  // already ISO
+  // ISO format already
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
   // NetSuite format dd-mm-yy
   const parts = s.split("-");
   if (parts.length === 3 && parts[0].length <= 2) {
-    let d = parts[0].padStart(2,"0");
-    let m = parts[1].padStart(2,"0");
-    let y = "20" + parts[2];
+    const d = parts[0].padStart(2,"0");
+    const m = parts[1].padStart(2,"0");
+    const y = "20" + parts[2];
     return `${y}-${m}-${d}`;
   }
 
-  const d = new Date(s);
-  if (isNaN(d)) return "";
-  return d.toISOString().split("T")[0];
+  const dt = new Date(s);
+  if (isNaN(dt)) return "";
+  return dt.toISOString().split("T")[0];
 }
 
-// Unified key builder (MOST IMPORTANT PART)
-function makeKey(item, lot, exp, bin){
+// unified key
+function key(item, lot, exp, bin){
   return [
     clean(item),
     clean(lot),
@@ -104,7 +98,7 @@ function makeKey(item, lot, exp, bin){
 }
 
 // =====================
-// FLOW START
+// START FLOW
 // =====================
 function startFlow(){
   document.getElementById("step1").style.display = "block";
@@ -112,11 +106,9 @@ function startFlow(){
 }
 
 // =====================
-// STEP 1 - GOOGLE SHEET
+// GOOGLE SHEET
 // =====================
 async function loadGoogleSheet(){
-
-  const status = document.getElementById("status");
 
   const res = await fetch("https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9buyeY2V9qHg10FJJ3JbuyV-o8xvbF2QEGSLgX-3cIdgwR7fDJoY_BLiiAOQYCUHv0qcQ3fMLVDv-/pub?output=csv");
   const text = await res.text();
@@ -129,34 +121,46 @@ async function loadGoogleSheet(){
 
   cycleData = parsed.data;
 
-  status.innerText = "Google Sheet Loaded ✔";
-
+  document.getElementById("status").innerText = "Google Sheet Loaded ✔";
   document.getElementById("step2").style.display = "block";
 }
 
 // =====================
-// STEP 2 - NETSUITE FILE
+// NETSUITE UPLOAD (FIXED PARSING)
 // =====================
 document.getElementById("fileInput").addEventListener("change", e => {
 
-  Papa.parse(e.target.files[0], {
-    header: true,
-    skipEmptyLines: true,
-    delimiter: "",
-    transformHeader: h => h.trim(),
-    complete: r => {
+  const file = e.target.files[0];
 
-      netSuiteData = r.data;
+  file.text().then(text => {
 
-      buildBatchOptions();
+    // 🔥 FIX: handle Excel-export style spacing (NOT CSV-safe)
+    const lines = text.split(/\r?\n/).filter(l => l.trim());
 
-      document.getElementById("step3").style.display = "block";
-    }
+    netSuiteData = lines.map(line => {
+
+      const cols = line.split(/\t| {2,}/).map(x => x.trim());
+
+      return {
+        Item: cols[0],
+        Lot: cols[1],
+        Expiration: cols[2],
+        Bin: cols[3],
+        Status: cols[4],
+        OnHand: cols[5],
+        Available: cols[6]
+      };
+    });
+
+    console.log("NETSUITE FIXED SAMPLE:", netSuiteData[0]);
+
+    buildBatchOptions();
+    document.getElementById("step3").style.display = "block";
   });
 });
 
 // =====================
-// STEP 3 - BATCH LIST
+// BUILD BATCH OPTIONS
 // =====================
 function buildBatchOptions(){
 
@@ -199,32 +203,32 @@ function buildBatchOptions(){
 }
 
 // =====================
-// STEP 4 - CORE LEDGER
+// CORE LEDGER (FIXED RELIABILITY)
 // =====================
 function runCalculation(){
 
   const ledger = {};
 
-  // -------------------
-  // NETSUITE (- SIDE)
-  // -------------------
+  // ------------------
+  // NETSUITE (-)
+  // ------------------
   netSuiteData
-    .filter(r => clean(r["Bin Number"]) === selectedBin)
+    .filter(r => clean(r.Bin) === selectedBin)
     .forEach(r => {
 
-      const k = makeKey(
-        r["Item"],
-        r["LOT"],
-        r["Expiration Date"],
-        r["Bin Number"]
+      const k = key(
+        r.Item,
+        r.Lot,
+        r.Expiration,
+        r.Bin
       );
 
-      ledger[k] = (ledger[k] || 0) - num(r["On Hand"]);
+      ledger[k] = (ledger[k] || 0) - num(r.OnHand);
     });
 
-  // -------------------
-  // CYCLE (+ SIDE)
-  // -------------------
+  // ------------------
+  // CYCLE (+)
+  // ------------------
   cycleData
     .filter(r =>
       clean(r["Bin"]) === selectedBin &&
@@ -232,7 +236,7 @@ function runCalculation(){
     )
     .forEach(r => {
 
-      const k = makeKey(
+      const k = key(
         r["SKU"],
         r["Lot"],
         r["Expiration Date"],
@@ -242,9 +246,9 @@ function runCalculation(){
       ledger[k] = (ledger[k] || 0) + num(r["On Hand"]);
     });
 
-  // -------------------
+  // ------------------
   // OUTPUT
-  // -------------------
+  // ------------------
   const rows = Object.entries(ledger).map(([k,v])=>{
     const [item,lot,exp,bin] = k.split("|");
     return {item,lot,exp,bin,adj:v};
