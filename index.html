@@ -1,579 +1,69 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Scanner Counter</title>
+    <meta charset="UTF-8">
+    <title>Select Warehouse</title>
 
-<style>
-body {
-    font-family: Arial;
-    background: rgb(0,0,0);
-    color: rgb(255,224,0);
-    margin: 0;
-    padding: 12px;
-    font-size: 18px;
-    -webkit-user-select: none;
-    user-select: none;
-}
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background: rgb(0,0,0);
+            color: rgb(255,224,0);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            -webkit-user-select: none;
+            user-select: none;
+        }
 
-h2 {
-    text-align: center;
-    font-size: 26px;
-    margin-bottom: 16px;
-    letter-spacing: 1px;
-}
+        h1 {
+            font-size: 34px;
+            margin-bottom: 40px;
+            letter-spacing: 2px;
+        }
 
-.hidden { display: none; }
+        button {
+            font-size: 26px;
+            padding: 22px 50px;
+            margin: 16px;
+            cursor: pointer;
+            background: rgb(0,0,0);
+            color: rgb(255,224,0);
+            border: 3px solid rgb(255,224,0);
+            border-radius: 10px;
+            min-width: 180px;
+            touch-action: manipulation;
+        }
 
-label {
-    font-size: 18px;
-}
+        button:active {
+            background: rgb(255,224,0);
+            color: rgb(0,0,0);
+        }
 
-input, select {
-    width: 100%;
-    font-size: 20px;
-    padding: 14px;
-    margin: 8px 0;
-    background: rgb(0,0,0);
-    color: rgb(255,224,0);
-    border: 2px solid rgb(255,224,0);
-    border-radius: 6px;
-    box-sizing: border-box;
-}
-
-input:focus, select:focus {
-    outline: none;
-    box-shadow: 0 0 8px rgb(255,224,0);
-}
-
-table {
-    border-collapse: collapse;
-    margin-top: 20px;
-    width: 100%;
-    font-size: 18px;
-}
-
-td, th {
-    border: 1px solid rgb(255,224,0);
-    padding: 10px;
-    text-align: center;
-}
-
-th {
-    background: rgb(255,224,0);
-    color: rgb(0,0,0);
-    font-size: 18px;
-}
-
-#errorMsg {
-    color: rgb(255,224,0);
-    margin-top: 12px;
-    font-size: 18px;
-    text-align: center;
-    min-height: 24px;
-}
-
-.topButtons {
-    margin-top: 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-button {
-    padding: 18px;
-    font-size: 20px;
-    cursor: pointer;
-    background: rgb(0,0,0);
-    color: rgb(255,224,0);
-    border: 2px solid rgb(255,224,0);
-    border-radius: 8px;
-    touch-action: manipulation;
-}
-
-button:active {
-    background: rgb(255,224,0);
-    color: rgb(0,0,0);
-}
-
-button:hover {
-    background: rgb(255,224,0);
-    color: rgb(0,0,0);
-}
-
-#skuSection, #scanSection {
-    max-width: 600px;
-    margin: 0 auto;
-}
-
-/* =========================
-   MODAL
-========================= */
-#manualModal {
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0.95);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 10px;
-}
-
-#manualBox {
-    background: rgb(0,0,0);
-    padding: 20px;
-    width: 100%;
-    max-width: 420px;
-    border: 2px solid rgb(255,224,0);
-    border-radius: 10px;
-}
-
-#manualBox h3 {
-    text-align: center;
-    margin-top: 0;
-    margin-bottom: 12px;
-}
-
-#manualBox input, 
-#manualBox select {
-    font-size: 20px;
-    padding: 14px;
-}
-
-#manualBox button {
-    width: 100%;
-    margin-top: 10px;
-}
-</style>
+        button:hover {
+            background: rgb(255,224,0);
+            color: rgb(0,0,0);
+        }
+    </style>
 </head>
 
 <body>
 
-<h2>Scan Items</h2>
+<h1>Select Warehouse</h1>
 
-<div id="skuSection">
-    <label>Enter SKU:</label><br>
-    <input type="text" id="sku">
-    <br><br>
-    <button onclick="startScanning()">Start Scanning</button>
-</div>
-
-<div id="scanSection" class="hidden">
-
-    <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
-
-    <div class="topButtons">
-        <button onclick="nextSKU()">Next SKU</button>
-        <button onclick="completeBin()">Complete Bin</button>
-        <button onclick="openManual()">Manual Add LOT</button>
-    </div>
-
-    <p>Scan continuously...</p>
-    <input type="text" id="scanInput" autofocus>
-    <div id="errorMsg"></div>
-</div>
-
-<table id="resultTable" class="hidden">
-    <thead>
-        <tr>
-            <th>SKU</th>
-            <th>LOT</th>
-            <th>Expiration</th>
-            <th>Quantity</th>
-        </tr>
-    </thead>
-    <tbody></tbody>
-</table>
-
-<br>
-<button onclick="resetAll()">Reset</button>
-
-<!-- =========================
-     MANUAL ENTRY MODAL
-========================= -->
-<div id="manualModal">
-    <div id="manualBox">
-        <h3>Manual LOT Entry</h3>
-
-        <input id="mLot" placeholder="LOT">
-
-        <select id="mYear"></select>
-        <select id="mMonth"></select>
-        <select id="mDay"></select>
-
-        <input id="mQty" type="number" placeholder="Quantity">
-
-        <button onclick="addManual()">Add</button>
-        <button onclick="closeManual()">Cancel</button>
-    </div>
-</div>
+<button onclick="selectWarehouse('AB')">AB</button>
+<button onclick="selectWarehouse('ON')">ON</button>
 
 <script>
-
-const scanInput = document.getElementById('scanInput');
-const tableBody = document.querySelector('#resultTable tbody');
-const errorMsg = document.getElementById('errorMsg');
-
-let dataStore = {};
-let buffer = '';
-let timer = null;
-let lastInputTime = Date.now();
-
-let currentSKU = "";
-
-/* =========================
-   STRICT DATE VALIDATION (UNCHANGED)
-========================= */
-function isLeapYear(year) {
-    return (
-        (year % 4 === 0 && year % 100 !== 0) ||
-        (year % 400 === 0)
-    );
+function selectWarehouse(warehouse) {
+    localStorage.setItem("warehouse", warehouse);
+    window.location.href = "cycle.html";
 }
-
-function isValidDate(y, m, d) {
-    y = Number(y);
-    m = Number(m);
-    d = Number(d);
-
-    const monthDays = {
-        1: 31,
-        2: isLeapYear(y) ? 29 : 28,
-        3: 31,
-        4: 30,
-        5: 31,
-        6: 30,
-        7: 31,
-        8: 31,
-        9: 30,
-        10: 31,
-        11: 30,
-        12: 31
-    };
-
-    if (!monthDays[m]) return false;
-    if (d < 1 || d > monthDays[m]) return false;
-
-    return true;
-}
-
-/* =========================
-   DROPDOWNS (UPDATED: DYNAMIC DAYS)
-========================= */
-(function initDropdowns() {
-    const year = document.getElementById("mYear");
-    const month = document.getElementById("mMonth");
-    const day = document.getElementById("mDay");
-
-    const now = new Date();
-    const currentYear = now.getFullYear();
-
-    year.innerHTML = `<option value="">Year</option>`;
-    for (let y = currentYear - 3; y <= currentYear + 10; y++) {
-        year.innerHTML += `<option value="${y}">${y}</option>`;
-    }
-
-    month.innerHTML = `<option value="">Month</option>`;
-    for (let m = 1; m <= 12; m++) {
-        const mm = String(m).padStart(2, '0');
-        month.innerHTML += `<option value="${mm}">${mm}</option>`;
-    }
-
-    day.innerHTML = `<option value="">Day</option>`;
-})();
-
-/* =========================
-   NEW: DYNAMIC DAY BUILDER
-========================= */
-function updateDays() {
-    const year = parseInt(document.getElementById("mYear").value);
-    const month = parseInt(document.getElementById("mMonth").value);
-    const day = document.getElementById("mDay");
-
-    day.innerHTML = `<option value="">Day</option>`;
-
-    if (!year || !month) return;
-
-    const monthDays = {
-        1: 31,
-        2: isLeapYear(year) ? 29 : 28,
-        3: 31,
-        4: 30,
-        5: 31,
-        6: 30,
-        7: 31,
-        8: 31,
-        9: 30,
-        10: 31,
-        11: 30,
-        12: 31
-    };
-
-    const max = monthDays[month];
-
-    for (let d = 1; d <= max; d++) {
-        const dd = String(d).padStart(2, '0');
-        day.innerHTML += `<option value="${dd}">${dd}</option>`;
-    }
-}
-
-/* attach listeners */
-document.getElementById("mYear").addEventListener("change", updateDays);
-document.getElementById("mMonth").addEventListener("change", updateDays);
-
-/* =========================
-   START SCANNING
-========================= */
-function startScanning() {
-    const sku = document.getElementById('sku').value.trim();
-    if (!sku) return alert("Enter SKU first");
-
-    currentSKU = sku;
-
-    document.getElementById('skuDisplay').innerText = sku;
-
-    document.getElementById('skuSection').classList.add('hidden');
-    document.getElementById('scanSection').classList.remove('hidden');
-    document.getElementById('resultTable').classList.remove('hidden');
-
-    scanInput.focus();
-}
-
-/* =========================
-   NEXT SKU
-========================= */
-function nextSKU() {
-    const newSku = prompt("Enter next SKU:");
-    if (!newSku) return;
-
-    currentSKU = newSku;
-    document.getElementById('skuDisplay').innerText = newSku;
-
-    scanInput.focus();
-}
-
-/* =========================
-   COMPLETE BIN
-========================= */
-function completeBin() {
-    const confirmEnd = confirm("Complete this bin and review scanned data?");
-    if (!confirmEnd) return;
-
-    const warehouse = localStorage.getItem("warehouse");
-    const bin = localStorage.getItem("bin");
-    const cycle = localStorage.getItem("cycle");
-
-    const exportData = Object.values(dataStore).map(item => ({
-        timestamp: new Date().toISOString(),
-        cycle,
-        warehouse,
-        bin,
-        sku: item.sku,
-        lot: item.lot,
-        exp: item.exp,
-        qty: item.qty
-    }));
-
-    localStorage.setItem("reviewData", JSON.stringify(exportData));
-
-    window.location.href = "review.html";
-}
-
-/* =========================
-   MANUAL ENTRY
-========================= */
-function openManual() {
-    document.getElementById('manualModal').style.display = 'flex';
-}
-
-function closeManual() {
-    document.getElementById('manualModal').style.display = 'none';
-}
-
-/* =========================
-   ADD MANUAL ITEM
-========================= */
-function addManual() {
-    const lot = document.getElementById('mLot').value.trim();
-    const qty = parseInt(document.getElementById('mQty').value);
-
-    const year = document.getElementById('mYear').value;
-    const month = document.getElementById('mMonth').value;
-    const day = document.getElementById('mDay').value;
-
-    if (!lot || !qty || !year || !month || !day) {
-        alert("Please fill LOT, quantity, and full expiration date");
-        return;
-    }
-
-    const y = parseInt(year);
-    const m = parseInt(month);
-    const d = parseInt(day);
-
-    if (!isValidDate(y, m, d)) {
-        alert("Invalid calendar date (e.g. Feb 30 not allowed)");
-        return;
-    }
-
-    const exp = `${year}-${month}-${day}`;
-
-    const key = currentSKU + "|" + lot + "|" + exp;
-
-    if (!dataStore[key]) {
-        dataStore[key] = {
-            sku: currentSKU,
-            lot,
-            exp,
-            qty: 0
-        };
-    }
-
-    dataStore[key].qty += qty;
-
-    renderTable();
-    closeManual();
-
-    document.getElementById('mLot').value = '';
-    document.getElementById('mQty').value = '';
-
-    document.getElementById('mYear').selectedIndex = 0;
-    document.getElementById('mMonth').selectedIndex = 0;
-    document.getElementById('mDay').innerHTML = `<option value="">Day</option>`;
-}
-
-/* =========================
-   SCAN INPUT
-========================= */
-scanInput.addEventListener('input', function () {
-    const now = Date.now();
-    const diff = now - lastInputTime;
-    lastInputTime = now;
-
-    if (diff > 50) buffer = '';
-
-    buffer += scanInput.value;
-    scanInput.value = '';
-
-    clearTimeout(timer);
-    timer = setTimeout(() => {
-        processScan(buffer);
-        buffer = '';
-    }, 50);
-});
-
-/* =========================
-   ERROR
-========================= */
-function showError(message) {
-    errorMsg.innerText = message;
-
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(440, ctx.currentTime);
-    gain.gain.setValueAtTime(1, ctx.currentTime);
-
-    osc.connect(gain);
-    gain.connect(ctx.destination);
-
-    osc.start();
-    osc.stop(ctx.currentTime + 0.25);
-
-    setTimeout(() => errorMsg.innerText = '', 1500);
-}
-
-/* =========================
-   PARSER
-========================= */
-function processScan(raw) {
-    if (!raw) return;
-
-    const GS = String.fromCharCode(29);
-    let working = raw;
-
-    let exp = '';
-    let lot = '';
-
-    if (working.startsWith('01') && working.length >= 16) {
-        working = working.substr(16);
-    }
-
-    let expIndex = working.indexOf('17');
-    if (expIndex !== -1 && working.length >= expIndex + 8) {
-        const expRaw = working.substr(expIndex + 2, 6);
-        exp = `20${expRaw.slice(0,2)}-${expRaw.slice(2,4)}-${expRaw.slice(4,6)}`;
-        working = working.substring(0, expIndex) + working.substring(expIndex + 8);
-    }
-
-    let mfgIndex = working.indexOf('11');
-    if (mfgIndex !== -1 && working.length >= mfgIndex + 8) {
-        working = working.substring(0, mfgIndex) + working.substring(mfgIndex + 8);
-    }
-
-    let lotIndex = working.indexOf('10');
-    if (lotIndex !== -1) {
-        let i = lotIndex + 2;
-        let value = '';
-
-        while (i < working.length && working[i] !== GS) {
-            value += working[i];
-            i++;
-        }
-
-        lot = value;
-    }
-
-    if (!lot) {
-        showError("Invalid barcode scanned");
-        return;
-    }
-
-    const key = currentSKU + "|" + lot + "|" + exp;
-
-    if (!dataStore[key]) {
-        dataStore[key] = {
-            sku: currentSKU,
-            lot,
-            exp,
-            qty: 0
-        };
-    }
-
-    dataStore[key].qty++;
-
-    renderTable();
-}
-
-/* =========================
-   TABLE
-========================= */
-function renderTable() {
-    tableBody.innerHTML = '';
-
-    Object.values(dataStore).forEach(item => {
-        const row = document.createElement('tr');
-
-        row.innerHTML = `
-            <td>${item.sku}</td>
-            <td>${item.lot}</td>
-            <td>${item.exp}</td>
-            <td>${item.qty}</td>
-        `;
-
-        tableBody.appendChild(row);
-    });
-}
-
-/* =========================
-   RESET
-========================= */
-function resetAll() {
-    location.reload();
-}
-
 </script>
 
 </body>
