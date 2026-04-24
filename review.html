@@ -5,32 +5,73 @@
 <title>Bin Review</title>
 
 <style>
-body { font-family: Arial; }
+body {
+    font-family: Arial;
+    background: rgb(0,0,0);
+    color: rgb(255,224,0);
+    margin: 0;
+    padding: 12px;
+}
+
+h2 {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 10px;
+}
 
 table {
     border-collapse: collapse;
     width: 100%;
     margin-top: 20px;
+    font-size: 16px;
 }
 
 th, td {
-    border: 1px solid #ccc;
-    padding: 8px;
+    border: 1px solid rgb(255,224,0);
+    padding: 10px;
+    text-align: center;
+    color: rgb(255,224,0);
 }
 
 th {
-    background: #f2f2f2;
+    background: rgb(255,224,0);
+    color: rgb(0,0,0);
+    font-weight: bold;
 }
 
 button {
-    margin: 5px;
-    padding: 8px 12px;
+    margin: 6px;
+    padding: 12px 16px;
     cursor: pointer;
+    font-size: 18px;
+    background: rgb(0,0,0);
+    color: rgb(255,224,0);
+    border: 2px solid rgb(255,224,0);
+    border-radius: 8px;
+    touch-action: manipulation;
+}
+
+button:active {
+    background: rgb(255,224,0);
+    color: rgb(0,0,0);
+}
+
+button:hover {
+    background: rgb(255,224,0);
+    color: rgb(0,0,0);
 }
 
 #status {
-    margin-top: 10px;
+    margin-top: 12px;
     font-weight: bold;
+    text-align: center;
+    font-size: 18px;
+    min-height: 24px;
+}
+
+table button {
+    padding: 8px 10px;
+    font-size: 16px;
 }
 </style>
 </head>
@@ -126,10 +167,10 @@ async function sendCycleToSheet() {
     try {
         for (let item of data) {
 
-            const res = await fetch(SHEET_URL, {
+            await fetch(SHEET_URL, {
                 method: "POST",
                 body: JSON.stringify(item),
-                mode: "no-cors", // 🔥 KEY FIX FOR GITHUB PAGES
+                mode: "no-cors",
                 headers: {
                     "Content-Type": "text/plain"
                 }
@@ -137,7 +178,7 @@ async function sendCycleToSheet() {
 
         }
 
-        status.innerText = "✅ Sent (no-cors mode - cannot verify response)";
+        status.innerText = "✅ Sent to sheet";
     } catch (err) {
         console.log(err);
         status.innerText = "❌ Network error sending data.";
