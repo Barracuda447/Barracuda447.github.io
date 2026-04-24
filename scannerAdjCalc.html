@@ -179,28 +179,18 @@ async function loadCycleDataAndShowOptions() {
 // -------------------------
 function runAdjustment(bin, date) {
 
+  const tbody = document.querySelector("#resultTable tbody");
+  tbody.innerHTML = "";
+
+  // 1. filter cycle data for selected bin + batch
   const ccFiltered = cycleData.filter(r =>
     clean(r["Bin"]) === bin &&
     normalizeDate(r["Timestamp"]) === date
   );
 
-  const nsFiltered = netSuiteData.filter(r =>
-    clean(r["Bin Number"]) === bin
-  );
-
-  let nsMap = {};
-  nsFiltered.forEach(r => {
-    const key = [
-      clean(r["Item"]),
-      clean(r["LOT"]),
-      normalizeDate(r["Expiration Date"]),
-      clean(r["Bin Number"])
-    ].join("|");
-
-    nsMap[key] = parseFloat(r["On Hand"] || 0);
-  });
-
+  // 2. build cycle lookup (SUM duplicates properly)
   let ccMap = {};
+
   ccFiltered.forEach(r => {
     const key = [
       clean(r["SKU"]),
@@ -209,51 +199,57 @@ function runAdjustment(bin, date) {
       clean(r["Bin"])
     ].join("|");
 
-    ccMap[key] = parseFloat(r["On Hand"] || 0);
+    ccMap[key] = (ccMap[key] || 0) + parseFloat(r["On Hand"] || 0);
   });
 
-  const allKeys = new Set([...Object.keys(nsMap), ...Object.keys(ccMap)]);
+  // 3. filter NetSuite for bin
+  const nsFiltered = netSuiteData.filter(r =>
+    clean(r["Bin Number"]) === bin
+  );
 
-  const rows = Array.from(allKeys).map(key => {
-    const [item, lot, exp, binKey] = key.split("|");
+  // 4. build OUTPUT directly from NetSuite rows
+  const rows = nsFiltered.map(r => {
 
-    const systemQty = nsMap[key] || 0;
+    const key = [
+      clean(r["Item"]),
+      clean(r["LOT"]),
+      normalizeDate(r["Expiration Date"]),
+      clean(r["Bin Number"])
+    ].join("|");
+
+    const systemQty = parseFloat(r["On Hand"] || 0);
     const countedQty = ccMap[key] || 0;
 
     const adjustment = countedQty - systemQty;
 
     return {
-      item,
-      lot,
-      exp,
-      bin: binKey,
+      item: clean(r["Item"]),
+      lot: clean(r["LOT"]),
+      exp: normalizeDate(r["Expiration Date"]),
+      bin: clean(r["Bin Number"]),
       adjustment
     };
   });
 
+  // 5. sort output
   rows.sort((a, b) =>
     a.item.localeCompare(b.item, undefined, { numeric: true }) ||
     a.lot.localeCompare(b.lot)
   );
 
-  const tbody = document.querySelector("#resultTable tbody");
-  tbody.innerHTML = "";
-
+  // 6. render ALL rows (including zero if you want visibility)
   rows.forEach(r => {
-    if (r.adjustment !== 0) {
-      tbody.innerHTML += `
-        <tr>
-          <td>${r.item}</td>
-          <td>${r.lot}</td>
-          <td>${r.exp}</td>
-          <td>${r.bin}</td>
-          <td>${r.adjustment > 0 ? "+" : ""}${r.adjustment}</td>
-        </tr>
-      `;
-    }
+    tbody.innerHTML += `
+      <tr>
+        <td>${r.item}</td>
+        <td>${r.lot}</td>
+        <td>${r.exp}</td>
+        <td>${r.bin}</td>
+        <td>${r.adjustment > 0 ? "+" : ""}${r.adjustment}</td>
+      </tr>
+    `;
   });
 }
-
 </script>
 
 </body>
