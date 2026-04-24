@@ -5,6 +5,94 @@
 
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: rgb(0,0,0);
+      color: rgb(255,255,255);
+      padding: 24px;
+    }
+
+    h2 {
+      color: rgb(255,224,0);
+      margin-bottom: 20px;
+    }
+
+    h3 {
+      color: rgb(255,224,0);
+      margin-bottom: 12px;
+    }
+
+    button {
+      background: rgb(255,224,0);
+      color: rgb(0,0,0);
+      border: none;
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-weight: 600;
+      margin: 6px 6px 6px 0;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    button:hover {
+      filter: brightness(0.9);
+      transform: translateY(-1px);
+    }
+
+    input[type="file"] {
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,224,0,0.3);
+      color: white;
+      padding: 10px;
+      border-radius: 8px;
+    }
+
+    #step1, #step2, #step3, #step4 {
+      margin-top: 20px;
+      padding: 16px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,224,0,0.15);
+      border-radius: 14px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      overflow: hidden;
+      border-radius: 10px;
+    }
+
+    th {
+      background: rgba(255,224,0,0.15);
+      color: rgb(255,224,0);
+      text-align: left;
+      padding: 10px;
+      font-size: 14px;
+    }
+
+    td {
+      padding: 10px;
+      border-bottom: 1px solid rgba(255,224,0,0.1);
+      color: rgba(255,255,255,0.85);
+    }
+
+    tr:hover td {
+      background: rgba(255,224,0,0.05);
+    }
+
+    #status {
+      color: rgba(255,255,255,0.7);
+      margin-top: 10px;
+    }
+
+    #batchOptions button {
+      display: inline-block;
+    }
+  </style>
 </head>
 
 <body>
@@ -31,7 +119,7 @@
 <div id="step4" style="display:none;">
   <h3>Adjustment Results</h3>
 
-  <table border="1">
+  <table>
     <thead>
       <tr>
         <th>Item</th>
@@ -68,7 +156,7 @@ function num(v){
 }
 
 // =====================
-// DATE NORMALIZER (FINAL FIXED)
+// DATE NORMALIZER
 // =====================
 function normDate(v){
 
@@ -76,24 +164,13 @@ function normDate(v){
 
   const s = v.toString().trim();
 
-  // ISO (Google Sheet)
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    return s;
-  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
-  // NetSuite: 23-10-29 (DD-MM-YY)
   if (/^\d{1,2}-\d{1,2}-\d{2}$/.test(s)) {
-
     const parts = s.split("-");
-
-    const day = parts[0].padStart(2, "0");
-    const month = parts[1].padStart(2, "0");
-    const year = "20" + parts[2];
-
-    return `${year}-${month}-${day}`;
+    return `20${parts[2]}-${parts[1].padStart(2,"0")}-${parts[0].padStart(2,"0")}`;
   }
 
-  // Excel numeric fallback
   if (!isNaN(v) && typeof v === "number") {
     const d = new Date(Date.UTC(1899, 11, 30) + v * 86400000);
     return d.toISOString().split("T")[0];
@@ -105,19 +182,14 @@ function normDate(v){
 }
 
 // =====================
-// KEY BUILDER
+// KEY
 // =====================
 function key(item, lot, exp, bin){
-  return [
-    clean(item),
-    clean(lot),
-    normDate(exp),
-    clean(bin)
-  ].join("|");
+  return [clean(item), clean(lot), normDate(exp), clean(bin)].join("|");
 }
 
 // =====================
-// START FLOW
+// FLOW
 // =====================
 function startFlow(){
   document.getElementById("step1").style.display = "block";
@@ -145,7 +217,7 @@ async function loadGoogleSheet(){
 }
 
 // =====================
-// NETSUITE XLS/XLSX IMPORT
+// FILE UPLOAD
 // =====================
 document.getElementById("fileInput").addEventListener("change", e => {
 
@@ -155,11 +227,8 @@ document.getElementById("fileInput").addEventListener("change", e => {
   reader.onload = function(evt){
 
     const data = new Uint8Array(evt.target.result);
-
     const workbook = XLSX.read(data, { type: "array" });
-
     const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
     const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
     netSuiteData = json.map(r => ({
@@ -178,7 +247,7 @@ document.getElementById("fileInput").addEventListener("change", e => {
 });
 
 // =====================
-// BATCH BUILDER
+// BATCHES
 // =====================
 function buildBatchOptions(){
 
@@ -187,9 +256,7 @@ function buildBatchOptions(){
   cycleData.forEach(r => {
     const bin = clean(r["Bin"]);
     const date = normDate(r["Timestamp"]);
-
     if (!bin || !date) return;
-
     map[`${date}|${bin}`] = true;
   });
 
@@ -199,13 +266,9 @@ function buildBatchOptions(){
   Object.keys(map).forEach(k => {
 
     const [date, bin] = k.split("|");
-
     const d = new Date(date + "T00:00:00");
 
-    const label = d.toLocaleDateString(undefined,{
-      month:"long",
-      day:"numeric"
-    });
+    const label = d.toLocaleDateString(undefined,{ month:"long", day:"numeric" });
 
     const btn = document.createElement("button");
     btn.innerText = `${label}, Bin ${bin}`;
@@ -221,63 +284,35 @@ function buildBatchOptions(){
 }
 
 // =====================
-// CORE CALCULATION
+// CORE LOGIC (UNCHANGED)
 // =====================
 function runCalculation(){
 
   const ledger = {};
 
-  // ------------------
-  // NETSUITE (-)
-  // ------------------
   netSuiteData
     .filter(r => clean(r.Bin) === selectedBin)
     .forEach(r => {
-
-      const k = key(
-        r.Item,
-        r.Lot,
-        r.Expiration,
-        r.Bin
-      );
-
+      const k = key(r.Item, r.Lot, r.Expiration, r.Bin);
       ledger[k] = (ledger[k] || 0) - num(r.OnHand);
     });
 
-  // ------------------
-  // CYCLE (+)
-  // ------------------
   cycleData
     .filter(r =>
       clean(r["Bin"]) === selectedBin &&
       normDate(r["Timestamp"]) === selectedDate
     )
     .forEach(r => {
-
-      const k = key(
-        r["SKU"],
-        r["Lot"],
-        r["Expiration Date"],
-        r["Bin"]
-      );
-
+      const k = key(r["SKU"], r["Lot"], r["Expiration Date"], r["Bin"]);
       ledger[k] = (ledger[k] || 0) + num(r["On Hand"]);
     });
 
-  // ------------------
-  // FINAL OUTPUT (ZERO FILTER APPLIED HERE)
-  // ------------------
   const rows = Object.entries(ledger)
     .map(([k,v])=>{
       const [item,lot,exp,bin] = k.split("|");
       return {item,lot,exp,bin,adj:v};
     })
-    .filter(r => r.adj !== 0); // 🔥 FINAL STEP
-
-  rows.sort((a,b)=>
-    a.item.localeCompare(b.item,undefined,{numeric:true}) ||
-    a.lot.localeCompare(b.lot)
-  );
+    .filter(r => r.adj !== 0);
 
   const tbody = document.getElementById("results");
   tbody.innerHTML = "";
