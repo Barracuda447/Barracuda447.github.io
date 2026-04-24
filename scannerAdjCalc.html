@@ -68,7 +68,7 @@ function num(v){
 }
 
 // =====================
-// DATE NORMALIZER (FIXED)
+// DATE NORMALIZER (FINAL FIXED)
 // =====================
 function normDate(v){
 
@@ -93,7 +93,7 @@ function normDate(v){
     return `${year}-${month}-${day}`;
   }
 
-  // Excel numeric date fallback
+  // Excel numeric fallback
   if (!isNaN(v) && typeof v === "number") {
     const d = new Date(Date.UTC(1899, 11, 30) + v * 86400000);
     return d.toISOString().split("T")[0];
@@ -145,7 +145,7 @@ async function loadGoogleSheet(){
 }
 
 // =====================
-// NETSUITE XLS/XLSX LOAD
+// NETSUITE XLS/XLSX IMPORT
 // =====================
 document.getElementById("fileInput").addEventListener("change", e => {
 
@@ -178,7 +178,7 @@ document.getElementById("fileInput").addEventListener("change", e => {
 });
 
 // =====================
-// BUILD BATCH OPTIONS
+// BATCH BUILDER
 // =====================
 function buildBatchOptions(){
 
@@ -227,9 +227,9 @@ function runCalculation(){
 
   const ledger = {};
 
-  // -------------------
+  // ------------------
   // NETSUITE (-)
-  // -------------------
+  // ------------------
   netSuiteData
     .filter(r => clean(r.Bin) === selectedBin)
     .forEach(r => {
@@ -244,9 +244,9 @@ function runCalculation(){
       ledger[k] = (ledger[k] || 0) - num(r.OnHand);
     });
 
-  // -------------------
+  // ------------------
   // CYCLE (+)
-  // -------------------
+  // ------------------
   cycleData
     .filter(r =>
       clean(r["Bin"]) === selectedBin &&
@@ -264,13 +264,15 @@ function runCalculation(){
       ledger[k] = (ledger[k] || 0) + num(r["On Hand"]);
     });
 
-  // -------------------
-  // OUTPUT
-  // -------------------
-  const rows = Object.entries(ledger).map(([k,v])=>{
-    const [item,lot,exp,bin] = k.split("|");
-    return {item,lot,exp,bin,adj:v};
-  });
+  // ------------------
+  // FINAL OUTPUT (ZERO FILTER APPLIED HERE)
+  // ------------------
+  const rows = Object.entries(ledger)
+    .map(([k,v])=>{
+      const [item,lot,exp,bin] = k.split("|");
+      return {item,lot,exp,bin,adj:v};
+    })
+    .filter(r => r.adj !== 0); // 🔥 FINAL STEP
 
   rows.sort((a,b)=>
     a.item.localeCompare(b.item,undefined,{numeric:true}) ||
