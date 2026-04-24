@@ -2,8 +2,14 @@
 <html>
 <head>
   <title>Scanner Adjustment Wizard</title>
+
+  <!-- Google Sheet CSV parser -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+  <!-- XLS/XLSX parser (CRITICAL FIX) -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 </head>
+
 <body>
 
 <h2>Scanner Adjustment Wizard</h2>
@@ -16,8 +22,8 @@
 </div>
 
 <div id="step2" style="display:none;">
-  <h3>Upload NetSuite Export</h3>
-  <input type="file" id="fileInput">
+  <h3>Upload NetSuite XLS/XLSX Export</h3>
+  <input type="file" id="fileInput" accept=".xls,.xlsx">
 </div>
 
 <div id="step3" style="display:none;">
@@ -45,7 +51,7 @@
 <script>
 
 // =====================
-// DATA
+// DATA STORAGE
 // =====================
 let cycleData = [];
 let netSuiteData = [];
@@ -64,16 +70,16 @@ function num(v){
   return isNaN(n) ? 0 : n;
 }
 
-// Normalize both formats safely
+// Normalize BOTH formats:
+// NetSuite: 30-4-27
+// Google: 2027-04-30
 function normDate(v){
   if (!v) return "";
 
   const s = v.toString().trim();
 
-  // ISO format already
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
 
-  // NetSuite format dd-mm-yy
   const parts = s.split("-");
   if (parts.length === 3 && parts[0].length <= 2) {
     const d = parts[0].padStart(2,"0");
@@ -87,7 +93,6 @@ function normDate(v){
   return dt.toISOString().split("T")[0];
 }
 
-// unified key
 function key(item, lot, exp, bin){
   return [
     clean(item),
@@ -106,7 +111,7 @@ function startFlow(){
 }
 
 // =====================
-// GOOGLE SHEET
+// STEP 1 - GOOGLE SHEET
 // =====================
 async function loadGoogleSheet(){
 
@@ -122,45 +127,50 @@ async function loadGoogleSheet(){
   cycleData = parsed.data;
 
   document.getElementById("status").innerText = "Google Sheet Loaded ✔";
+
   document.getElementById("step2").style.display = "block";
 }
 
 // =====================
-// NETSUITE UPLOAD (FIXED PARSING)
+// STEP 2 - NETSUITE XLS/XLSX (FIXED)
 // =====================
 document.getElementById("fileInput").addEventListener("change", e => {
 
   const file = e.target.files[0];
+  const reader = new FileReader();
 
-  file.text().then(text => {
+  reader.onload = function(evt){
 
-    // 🔥 FIX: handle Excel-export style spacing (NOT CSV-safe)
-    const lines = text.split(/\r?\n/).filter(l => l.trim());
+    const data = new Uint8Array(evt.target.result);
 
-    netSuiteData = lines.map(line => {
+    const workbook = XLSX.read(data, { type: "array" });
 
-      const cols = line.split(/\t| {2,}/).map(x => x.trim());
+    const sheetName = workbook.SheetNames[0];
+    const sheet = workbook.Sheets[sheetName];
 
-      return {
-        Item: cols[0],
-        Lot: cols[1],
-        Expiration: cols[2],
-        Bin: cols[3],
-        Status: cols[4],
-        OnHand: cols[5],
-        Available: cols[6]
-      };
-    });
+    const json = XLSX.utils.sheet_to_json(sheet, { defval: "" });
 
-    console.log("NETSUITE FIXED SAMPLE:", netSuiteData[0]);
+    console.log("RAW NETSUITE SAMPLE:", json[0]);
+
+    // Normalize NetSuite columns
+    netSuiteData = json.map(r => ({
+      Item: r["Item"],
+      Lot: r["LOT"],
+      Expiration: r["Expiration Date"],
+      Bin: r["Bin Number"],
+      OnHand: r["On Hand"],
+      Available: r["Available"]
+    }));
 
     buildBatchOptions();
     document.getElementById("step3").style.display = "block";
-  });
+  };
+
+  reader.readAsArrayBuffer(file);
 });
 
 // =====================
-// BUILD BATCH OPTIONS
+// STEP 3 - BATCH OPTIONS
 // =====================
 function buildBatchOptions(){
 
@@ -203,7 +213,7 @@ function buildBatchOptions(){
 }
 
 // =====================
-// CORE LEDGER (FIXED RELIABILITY)
+// STEP 4 - LEDGER (NOW RELIABLE)
 // =====================
 function runCalculation(){
 
