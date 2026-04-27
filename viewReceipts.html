@@ -52,16 +52,24 @@ th {
 }
 
 #pager {
-  margin-top: 10px;
   text-align: center;
+  margin-top: 10px;
+}
+
+#detail {
+  margin-top: 20px;
 }
 
 .hidden {
   display: none;
 }
 
-#detail {
-  margin-top: 20px;
+.copyBtn {
+  margin-left: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
 }
 </style>
 </head>
@@ -80,6 +88,7 @@ th {
 
 <div id="detail" class="hidden">
   <h3 id="title"></h3>
+
   <table>
     <thead>
       <tr>
@@ -97,7 +106,7 @@ th {
 
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8_SEEMLGeKrYaH0kxTaQLNZxhrDVB6tBSWpY4jSrq-mjaLkOFodq_RizYbESt5FOseq_4Y7goMsxz/pub?output=csv";
 
-let data = [];
+let rawData = [];
 let receipts = [];
 
 let page = 0;
@@ -123,7 +132,7 @@ async function load() {
     skipEmptyLines: true
   });
 
-  data = parsed.data;
+  rawData = parsed.data;
 
   buildReceipts();
 }
@@ -131,27 +140,28 @@ async function load() {
 load();
 
 // ----------------------
-// BUILD RECEIPTS
+// SAFE KEY
+// ----------------------
+function receiptKey(r) {
+  return (r.PO || "") + "|" + (r.Session || "") + "|" + (r.Timestamp || "");
+}
+
+// ----------------------
+// BUILD RECEIPTS (FIXED GROUPING)
 // ----------------------
 function buildReceipts() {
 
   const map = {};
 
-  data.forEach(r => {
+  rawData.forEach(r => {
 
-    const po = (r.PO || "").trim();
-    const session = (r.Session || "").trim();
-    const ts = r.Timestamp;
-
-    if (!po || !ts) return;
-
-    const key = po + "|" + session + "|" + ts;
+    const key = receiptKey(r);
 
     if (!map[key]) {
       map[key] = {
-        po,
-        session,
-        timestamp: ts,
+        po: r.PO,
+        session: r.Session,
+        timestamp: r.Timestamp,
         rows: []
       };
     }
@@ -166,14 +176,12 @@ function buildReceipts() {
 }
 
 // ----------------------
-// PAGINATION
+// PAGINATION LIST
 // ----------------------
 function renderList() {
 
   const start = page * pageSize;
-  const end = start + pageSize;
-
-  const slice = receipts.slice(start, end);
+  const slice = receipts.slice(start, start + pageSize);
 
   const div = document.getElementById("list");
   div.innerHTML = "";
@@ -196,10 +204,7 @@ function renderList() {
   slice.forEach(r => {
 
     const d = new Date(r.timestamp);
-
-    const label = isNaN(d)
-      ? r.timestamp
-      : d.toLocaleString();
+    const label = isNaN(d) ? r.timestamp : d.toLocaleString();
 
     const tr = document.createElement("tr");
 
@@ -236,7 +241,21 @@ function prevPage() {
 }
 
 // ----------------------
-// DETAIL VIEW
+// COPY CELL
+// ----------------------
+function cell(val) {
+  const safe = val ?? "";
+
+  return `
+    <div style="display:flex;justify-content:center;align-items:center;gap:6px;">
+      <span>${safe}</span>
+      <button class="copyBtn" onclick="copy('${String(safe).replace(/'/g,"\\'")}')">Copy</button>
+    </div>
+  `;
+}
+
+// ----------------------
+// DETAIL VIEW (FIXED + COPY RESTORED)
 // ----------------------
 function openReceipt(r) {
 
@@ -245,10 +264,8 @@ function openReceipt(r) {
   document.getElementById("title").innerText =
     `PO ${r.po} — ${r.session}`;
 
-  const rows = data.filter(x =>
-    x.PO === r.po &&
-    x.Session === r.session &&
-    x.Timestamp === r.timestamp
+  const rows = rawData.filter(x =>
+    receiptKey(x) === receiptKey(r)
   );
 
   const body = document.getElementById("body");
@@ -258,10 +275,10 @@ function openReceipt(r) {
 
     body.innerHTML += `
       <tr>
-        <td>${x.SKU}</td>
-        <td>${x.Lot}</td>
-        <td>${x["Expiration Date"]}</td>
-        <td>${x["Received Qty"]}</td>
+        <td>${cell(x.SKU)}</td>
+        <td>${cell(x.Lot)}</td>
+        <td>${cell(x["Expiration Date"])}</td>
+        <td>${cell(x["Received Qty"])}</td>
       </tr>
     `;
   });
