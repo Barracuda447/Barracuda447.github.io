@@ -215,20 +215,60 @@ function buildReceipts() {
 // ----------------------
 // RECEIPT BUTTONS
 // ----------------------
-function renderButtons() {
+const EXEC_URL = "https://script.google.com/macros/s/AKfycbwgXASrYocJT51hLX2YlVlLTpvsRwJwJVtOvd4k1qxaWkA_O1D7kS4x_UQqvpIEVK0/exec";
 
+function renderButtons() {
   const div = document.getElementById("receiptList");
   div.innerHTML = "";
 
   receipts.forEach(r => {
 
-    const label = `${r.po} — ${formatReceiptTime(r.timestamp)}`;
+    const wrapper = document.createElement("div");
+    wrapper.style.display = "flex";
+    wrapper.style.gap = "8px";
+    wrapper.style.alignItems = "center";
 
-    const btn = document.createElement("button");
-    btn.innerText = label;
-    btn.onclick = () => openReceipt(r);
+    // OPEN BUTTON (same as before)
+    const openBtn = document.createElement("button");
+    openBtn.innerText = `${r.po} — ${formatReceiptTime(r.timestamp)}`;
+    openBtn.onclick = () => openReceipt(r);
 
-    div.appendChild(btn);
+    // DELETE BUTTON
+    const delBtn = document.createElement("button");
+    delBtn.innerText = "Delete";
+    delBtn.style.background = "red";
+    delBtn.style.color = "white";
+
+    delBtn.onclick = async () => {
+
+      if (!confirm("Delete this receipt?")) return;
+
+      await fetch(EXEC_URL, {
+        method: "POST",
+        body: JSON.stringify({
+          action: "deleteReceipt",
+          po: r.po,
+          timestamp: r.timestamp
+        }),
+        headers: {
+          "Content-Type": "text/plain"
+        }
+      });
+
+      // remove locally
+      rawData = rawData.filter(x =>
+        !(x.PO === r.po &&
+          roundMinute(x.Timestamp) === r.timestamp)
+      );
+
+      buildReceipts();
+      document.getElementById("detail").classList.add("hidden");
+    };
+
+    wrapper.appendChild(openBtn);
+    wrapper.appendChild(delBtn);
+
+    div.appendChild(wrapper);
   });
 }
 
