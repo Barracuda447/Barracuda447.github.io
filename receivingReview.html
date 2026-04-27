@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Receiving Review</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: rgb(0,0,0);
+    color: rgb(255,224,0);
+    margin: 0;
+    padding: 12px;
+}
+
+h2 {
+    text-align: center;
+    font-size: 28px;
+    margin-bottom: 10px;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin-top: 20px;
+    font-size: 16px;
+}
+
+th, td {
+    border: 1px solid rgb(255,224,0);
+    padding: 10px;
+    text-align: center;
+}
+
+th {
+    background: rgb(255,224,0);
+    color: rgb(0,0,0);
+    font-weight: bold;
+}
+
+button {
+    margin: 6px;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 18px;
+    background: black;
+    color: rgb(255,224,0);
+    border: 2px solid rgb(255,224,0);
+    border-radius: 8px;
+}
+
+button:active,
+button:hover {
+    background: rgb(255,224,0);
+    color: black;
+}
+
+#status {
+    margin-top: 12px;
+    font-weight: bold;
+    text-align: center;
+    font-size: 18px;
+    min-height: 24px;
+}
+
+table button {
+    padding: 8px 10px;
+    font-size: 16px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Receiving Review</h2>
+
+<table>
+<thead>
+<tr>
+    <th>Timestamp</th>
+    <th>PO</th>
+    <th>Session</th>
+    <th>SKU</th>
+    <th>Lot</th>
+    <th>Expiration Date</th>
+    <th>Received Qty</th>
+    <th>Actions</th>
+</tr>
+</thead>
+
+<tbody id="reviewBody"></tbody>
+</table>
+
+<button onclick="sendToSheet()">Send to Google Sheet</button>
+<button onclick="finish()">Finish Receiving</button>
+
+<div id="status"></div>
+
+<script>
+
+// =========================
+// LOAD DATA
+// =========================
+let data = JSON.parse(localStorage.getItem("receivingReview") || "[]");
+const tbody = document.getElementById("reviewBody");
+const status = document.getElementById("status");
+
+// 👉 PASTE YOUR GOOGLE APPS SCRIPT URL HERE
+const SHEET_URL = "https://script.google.com/macros/s/AKfycbwgXASrYocJT51hLX2YlVlLTpvsRwJwJVtOvd4k1qxaWkA_O1D7kS4x_UQqvpIEVK0/exec";
+
+// =========================
+// RENDER TABLE
+// =========================
+function render() {
+    tbody.innerHTML = '';
+
+    data.forEach((row, index) => {
+        const tr = document.createElement("tr");
+
+        tr.innerHTML = `
+            <td>${row.timestamp}</td>
+            <td>${row.po}</td>
+            <td>${row.session}</td>
+            <td>${row.sku}</td>
+            <td>${row.lot}</td>
+            <td>${row.exp}</td>
+            <td>${row.qty}</td>
+            <td>
+                <button onclick="deleteRow(${index})">Delete</button>
+            </td>
+        `;
+
+        tbody.appendChild(tr);
+    });
+}
+
+// =========================
+// DELETE ROW
+// =========================
+function deleteRow(i) {
+    if (!confirm("Delete this row?")) return;
+
+    data.splice(i, 1);
+    localStorage.setItem("receivingReview", JSON.stringify(data));
+    render();
+}
+
+// =========================
+// SEND TO GOOGLE SHEET
+// =========================
+async function sendToSheet() {
+    if (!SHEET_URL) {
+        alert("Paste your Google Script URL first.");
+        return;
+    }
+
+    if (!data.length) {
+        alert("No data to send.");
+        return;
+    }
+
+    status.innerText = "Sending to Google Sheet...";
+
+    try {
+        for (let item of data) {
+
+            await fetch(SHEET_URL, {
+                method: "POST",
+                body: JSON.stringify(item),
+                mode: "no-cors",
+                headers: {
+                    "Content-Type": "text/plain"
+                }
+            });
+
+        }
+
+        status.innerText = "✅ Sent to sheet";
+
+    } catch (err) {
+        console.log(err);
+        status.innerText = "❌ Error sending data";
+    }
+}
+
+// =========================
+// FINISH
+// =========================
+function finish() {
+    if (!confirm("Finalize receiving?")) return;
+
+    alert("Receiving finalized.");
+
+    localStorage.removeItem("receivingReview");
+    localStorage.removeItem("poNumber");
+    localStorage.removeItem("receivingSession");
+
+    window.location.href = "receiving.html";
+}
+
+// initial render
+render();
+
+</script>
+
+</body>
+</html>
