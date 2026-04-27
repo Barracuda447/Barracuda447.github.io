@@ -109,7 +109,7 @@ function copy(v){
 }
 
 // ----------------------
-// TIME FORMAT
+// FORMAT TIME
 // ----------------------
 function formatReceiptTime(dateStr){
   const d = new Date(dateStr);
@@ -126,7 +126,7 @@ function formatReceiptTime(dateStr){
 }
 
 // ----------------------
-// EXPIRATION FORMAT
+// EXPIRY FORMAT
 // ----------------------
 function formatExpiry(dateStr){
   const d=new Date(dateStr);
@@ -135,17 +135,6 @@ function formatExpiry(dateStr){
   const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
   return `${String(d.getDate()).padStart(2,"0")}-${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
-}
-
-// ----------------------
-// ROUND MINUTE
-// ----------------------
-function roundMinute(dateStr){
-  const d=new Date(dateStr);
-  if(isNaN(d)) return dateStr;
-
-  d.setSeconds(0,0);
-  return d.toISOString();
 }
 
 // ----------------------
@@ -166,7 +155,7 @@ async function load(){
 load();
 
 // ----------------------
-// GROUP RECEIPTS
+// GROUP BY RECEIPT ID (NEW)
 // ----------------------
 function buildReceipts(){
 
@@ -174,18 +163,19 @@ function buildReceipts(){
 
   rawData.forEach(r=>{
 
-    const po=(r.PO||"").trim();
-    const ts=roundMinute(r.Timestamp);
+    const id=(r["Receipt ID"] || "").trim();
+    if(!id) return;
 
-    if(!po||!ts) return;
-
-    const key=po+"|"+ts;
-
-    if(!map[key]){
-      map[key]={po,timestamp:ts,rows:[]};
+    if(!map[id]){
+      map[id]={
+        receiptId:id,
+        po:r.PO,
+        timestamp:r.Timestamp,
+        rows:[]
+      };
     }
 
-    map[key].rows.push(r);
+    map[id].rows.push(r);
   });
 
   receipts=Object.values(map)
@@ -199,6 +189,7 @@ function buildReceipts(){
 // BUTTONS
 // ----------------------
 function renderButtons(){
+
   const div=document.getElementById("receiptList");
   div.innerHTML="";
 
@@ -211,23 +202,23 @@ function renderButtons(){
 
     const openBtn=document.createElement("button");
     openBtn.innerText=`${r.po} — ${formatReceiptTime(r.timestamp)}`;
+
     openBtn.onclick=()=>openReceipt(r);
 
     const delBtn=document.createElement("button");
-    delBtn.innerText="Delete";
+    delBtn.innerText="Delete Receipt";
     delBtn.style.background="red";
     delBtn.style.color="white";
 
     delBtn.onclick=async()=>{
 
-      if(!confirm("Delete this receipt?")) return;
+      if(!confirm("Delete entire receipt?")) return;
 
       await fetch(EXEC_URL,{
         method:"POST",
         body:JSON.stringify({
           action:"deleteReceipt",
-          po:r.po,
-          timestamp:r.timestamp
+          receiptId:r.receiptId
         }),
         headers:{
           "Content-Type":"application/json"
@@ -235,8 +226,7 @@ function renderButtons(){
       });
 
       rawData = rawData.filter(x =>
-        !(x.PO === r.po &&
-          roundMinute(x.Timestamp) === r.timestamp)
+        (x["Receipt ID"] || "") !== r.receiptId
       );
 
       buildReceipts();
