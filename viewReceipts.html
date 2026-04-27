@@ -15,9 +15,7 @@ body {
   padding: 20px;
 }
 
-h2 {
-  text-align: center;
-}
+h2 { text-align: center; }
 
 button {
   background: rgb(255,224,0);
@@ -30,9 +28,7 @@ button {
   font-weight: bold;
 }
 
-button:hover {
-  filter: brightness(0.9);
-}
+button:hover { filter: brightness(0.9); }
 
 #receiptList {
   display: flex;
@@ -96,7 +92,11 @@ th {
 
 <script>
 
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8_SEEMLGeKrYaH0kxTaQLNZxhrDVB6tBSWpY4jSrq-mjaLkOFodq_RizYbESt5FOseq_4Y7goMsxz/pub?output=csv";
+const SHEET_CSV_URL =
+"https://docs.google.com/spreadsheets/d/e/2PACX-1vR8_SEEMLGeKrYaH0kxTaQLNZxhrDVB6tBSWpY4jSrq-mjaLkOFodq_RizYbESt5FOseq_4Y7goMsxz/pub?output=csv";
+
+const EXEC_URL =
+"https://script.google.com/macros/s/AKfycbwgXASrYocJT51hLX2YlVlLTpvsRwJwJVtOvd4k1qxaWkA_O1D7kS4x_UQqvpIEVK0/exec";
 
 let rawData = [];
 let receipts = [];
@@ -104,158 +104,136 @@ let receipts = [];
 // ----------------------
 // COPY
 // ----------------------
-function copy(v) {
+function copy(v){
   navigator.clipboard.writeText(v || "");
 }
 
 // ----------------------
-// RECEIPT TIME FORMAT
-// Apr 27, 12:16pm
+// TIME FORMAT
 // ----------------------
-function formatReceiptTime(dateStr) {
+function formatReceiptTime(dateStr){
   const d = new Date(dateStr);
   if (isNaN(d)) return dateStr;
 
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-  const month = months[d.getMonth()];
-  const day = d.getDate();
+  let h=d.getHours();
+  const m=String(d.getMinutes()).padStart(2,"0");
+  const ampm=h>=12?"pm":"am";
+  h=h%12||12;
 
-  let hour = d.getHours();
-  const min = String(d.getMinutes()).padStart(2,"0");
-
-  const ampm = hour >= 12 ? "pm" : "am";
-  hour = hour % 12 || 12;
-
-  return `${month} ${day}, ${hour}:${min}${ampm}`;
+  return `${months[d.getMonth()]} ${d.getDate()}, ${h}:${m}${ampm}`;
 }
 
 // ----------------------
 // EXPIRATION FORMAT
-// 15-Jan-28
 // ----------------------
-function formatExpiry(dateStr) {
-  const d = new Date(dateStr);
-  if (isNaN(d)) return dateStr;
+function formatExpiry(dateStr){
+  const d=new Date(dateStr);
+  if(isNaN(d)) return dateStr;
 
-  const day = String(d.getDate()).padStart(2,"0");
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  const mon = months[d.getMonth()];
-  const yr = String(d.getFullYear()).slice(-2);
+  const months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-  return `${day}-${mon}-${yr}`;
+  return `${String(d.getDate()).padStart(2,"0")}-${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
 
 // ----------------------
-// ROUND TO 1 MIN WINDOW
+// ROUND MINUTE
 // ----------------------
-function roundMinute(dateStr) {
-  const d = new Date(dateStr);
-  if (isNaN(d)) return dateStr;
+function roundMinute(dateStr){
+  const d=new Date(dateStr);
+  if(isNaN(d)) return dateStr;
 
-  d.setSeconds(0, 0);
+  d.setSeconds(0,0);
   return d.toISOString();
 }
 
 // ----------------------
 // LOAD CSV
 // ----------------------
-async function load() {
+async function load(){
+  const res=await fetch(SHEET_CSV_URL);
+  const text=await res.text();
 
-  const res = await fetch(SHEET_CSV_URL);
-  const text = await res.text();
-
-  const parsed = Papa.parse(text, {
-    header: true,
-    skipEmptyLines: true
+  const parsed=Papa.parse(text,{
+    header:true,
+    skipEmptyLines:true
   });
 
-  rawData = parsed.data;
-
+  rawData=parsed.data;
   buildReceipts();
 }
-
 load();
 
 // ----------------------
 // GROUP RECEIPTS
 // ----------------------
-function buildReceipts() {
+function buildReceipts(){
 
-  const map = {};
+  const map={};
 
-  rawData.forEach(r => {
+  rawData.forEach(r=>{
 
-    const po = (r.PO || "").trim();
-    const ts = roundMinute(r.Timestamp);
+    const po=(r.PO||"").trim();
+    const ts=roundMinute(r.Timestamp);
 
-    if (!po || !ts) return;
+    if(!po||!ts) return;
 
-    const key = po + "|" + ts;
+    const key=po+"|"+ts;
 
-    if (!map[key]) {
-      map[key] = {
-        po,
-        timestamp: ts,
-        rows: []
-      };
+    if(!map[key]){
+      map[key]={po,timestamp:ts,rows:[]};
     }
 
     map[key].rows.push(r);
   });
 
-  receipts = Object.values(map)
-    .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .slice(0, 10);
-    // last 10 receipts
+  receipts=Object.values(map)
+    .sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))
+    .slice(0,10);
 
   renderButtons();
 }
 
 // ----------------------
-// RECEIPT BUTTONS
+// BUTTONS
 // ----------------------
-const EXEC_URL = "https://script.google.com/macros/s/AKfycbwgXASrYocJT51hLX2YlVlLTpvsRwJwJVtOvd4k1qxaWkA_O1D7kS4x_UQqvpIEVK0/exec";
+function renderButtons(){
+  const div=document.getElementById("receiptList");
+  div.innerHTML="";
 
-function renderButtons() {
-  const div = document.getElementById("receiptList");
-  div.innerHTML = "";
+  receipts.forEach(r=>{
 
-  receipts.forEach(r => {
+    const wrapper=document.createElement("div");
+    wrapper.style.display="flex";
+    wrapper.style.gap="8px";
+    wrapper.style.alignItems="center";
 
-    const wrapper = document.createElement("div");
-    wrapper.style.display = "flex";
-    wrapper.style.gap = "8px";
-    wrapper.style.alignItems = "center";
+    const openBtn=document.createElement("button");
+    openBtn.innerText=`${r.po} — ${formatReceiptTime(r.timestamp)}`;
+    openBtn.onclick=()=>openReceipt(r);
 
-    // OPEN BUTTON (same as before)
-    const openBtn = document.createElement("button");
-    openBtn.innerText = `${r.po} — ${formatReceiptTime(r.timestamp)}`;
-    openBtn.onclick = () => openReceipt(r);
+    const delBtn=document.createElement("button");
+    delBtn.innerText="Delete";
+    delBtn.style.background="red";
+    delBtn.style.color="white";
 
-    // DELETE BUTTON
-    const delBtn = document.createElement("button");
-    delBtn.innerText = "Delete";
-    delBtn.style.background = "red";
-    delBtn.style.color = "white";
+    delBtn.onclick=async()=>{
 
-    delBtn.onclick = async () => {
+      if(!confirm("Delete this receipt?")) return;
 
-      if (!confirm("Delete this receipt?")) return;
-
-      await fetch(EXEC_URL, {
-        method: "POST",
-        body: JSON.stringify({
-          action: "deleteReceipt",
-          po: r.po,
-          timestamp: r.timestamp
+      await fetch(EXEC_URL,{
+        method:"POST",
+        body:JSON.stringify({
+          action:"deleteReceipt",
+          po:r.po,
+          timestamp:r.timestamp
         }),
-        headers: {
-          "Content-Type": "text/plain"
+        headers:{
+          "Content-Type":"application/json"
         }
       });
 
-      // remove locally
       rawData = rawData.filter(x =>
         !(x.PO === r.po &&
           roundMinute(x.Timestamp) === r.timestamp)
@@ -273,11 +251,10 @@ function renderButtons() {
 }
 
 // ----------------------
-// COPY CELL
+// CELL
 // ----------------------
-function cell(val) {
-  const safe = val ?? "";
-
+function cell(val){
+  const safe=val??"";
   return `
     <div style="display:flex;justify-content:center;align-items:center;gap:6px;">
       <span>${safe}</span>
@@ -289,19 +266,19 @@ function cell(val) {
 // ----------------------
 // OPEN RECEIPT
 // ----------------------
-function openReceipt(r) {
+function openReceipt(r){
 
   document.getElementById("detail").classList.remove("hidden");
 
   document.getElementById("title").innerText =
     `${r.po} — ${formatReceiptTime(r.timestamp)}`;
 
-  const body = document.getElementById("body");
-  body.innerHTML = "";
+  const body=document.getElementById("body");
+  body.innerHTML="";
 
-  r.rows.forEach(x => {
+  r.rows.forEach(x=>{
 
-    body.innerHTML += `
+    body.innerHTML+=`
       <tr>
         <td>${cell(x.SKU)}</td>
         <td>${cell(x.Lot)}</td>
