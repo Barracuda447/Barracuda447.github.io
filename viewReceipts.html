@@ -62,9 +62,7 @@ th {
   cursor: pointer;
 }
 
-.hidden {
-  display: none;
-}
+.hidden { display: none; }
 </style>
 </head>
 
@@ -101,16 +99,16 @@ const EXEC_URL =
 let rawData = [];
 let receipts = [];
 
-// ----------------------
+// ======================
 // COPY
-// ----------------------
+// ======================
 function copy(v){
   navigator.clipboard.writeText(v || "");
 }
 
-// ----------------------
+// ======================
 // FORMAT TIME
-// ----------------------
+// ======================
 function formatReceiptTime(dateStr){
   const d = new Date(dateStr);
   if (isNaN(d)) return dateStr;
@@ -125,9 +123,9 @@ function formatReceiptTime(dateStr){
   return `${months[d.getMonth()]} ${d.getDate()}, ${h}:${m}${ampm}`;
 }
 
-// ----------------------
+// ======================
 // EXPIRY FORMAT
-// ----------------------
+// ======================
 function formatExpiry(dateStr){
   const d=new Date(dateStr);
   if(isNaN(d)) return dateStr;
@@ -137,9 +135,9 @@ function formatExpiry(dateStr){
   return `${String(d.getDate()).padStart(2,"0")}-${months[d.getMonth()]}-${String(d.getFullYear()).slice(-2)}`;
 }
 
-// ----------------------
-// LOAD CSV
-// ----------------------
+// ======================
+// LOAD
+// ======================
 async function load(){
   const res=await fetch(SHEET_CSV_URL);
   const text=await res.text();
@@ -154,9 +152,9 @@ async function load(){
 }
 load();
 
-// ----------------------
-// GROUP BY RECEIPT ID (NEW)
-// ----------------------
+// ======================
+// GROUP BY RECEIPT ID
+// ======================
 function buildReceipts(){
 
   const map={};
@@ -185,9 +183,9 @@ function buildReceipts(){
   renderButtons();
 }
 
-// ----------------------
+// ======================
 // BUTTONS
-// ----------------------
+// ======================
 function renderButtons(){
 
   const div=document.getElementById("receiptList");
@@ -202,7 +200,6 @@ function renderButtons(){
 
     const openBtn=document.createElement("button");
     openBtn.innerText=`${r.po} — ${formatReceiptTime(r.timestamp)}`;
-
     openBtn.onclick=()=>openReceipt(r);
 
     const delBtn=document.createElement("button");
@@ -235,14 +232,13 @@ function renderButtons(){
 
     wrapper.appendChild(openBtn);
     wrapper.appendChild(delBtn);
-
     div.appendChild(wrapper);
   });
 }
 
-// ----------------------
+// ======================
 // CELL
-// ----------------------
+// ======================
 function cell(val){
   const safe=val??"";
   return `
@@ -253,9 +249,9 @@ function cell(val){
   `;
 }
 
-// ----------------------
+// ======================
 // OPEN RECEIPT
-// ----------------------
+// ======================
 function openReceipt(r){
 
   document.getElementById("detail").classList.remove("hidden");
