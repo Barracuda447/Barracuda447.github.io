@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Receiving Viewer</title>
+
+<script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+<style>
+body {
+  margin: 0;
+  font-family: Arial;
+  background: rgb(0,0,0);
+  color: rgb(255,224,0);
+  padding: 20px;
+}
+
+h2 {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+button {
+  background: rgb(255,224,0);
+  color: black;
+  border: none;
+  padding: 12px 14px;
+  margin: 6px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+}
+
+button:hover {
+  filter: brightness(0.9);
+}
+
+#receiptList {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+  justify-content: center;
+}
+
+#tableWrap {
+  margin-top: 20px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th, td {
+  border: 1px solid rgb(255,224,0);
+  padding: 10px;
+  text-align: center;
+}
+
+th {
+  background: rgb(255,224,0);
+  color: black;
+}
+
+.copyBtn {
+  margin-left: 8px;
+  padding: 4px 8px;
+  font-size: 12px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.hidden {
+  display: none;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Receiving History</h2>
+
+<div id="receiptList"></div>
+
+<div id="tableWrap" class="hidden">
+  <h3 id="title"></h3>
+
+  <table>
+    <thead>
+      <tr>
+        <th>SKU</th>
+        <th>Lot</th>
+        <th>Expiration</th>
+        <th>Qty</th>
+      </tr>
+    </thead>
+    <tbody id="body"></tbody>
+  </table>
+</div>
+
+<script>
+
+const SHEET_CSV_URL = "PASTE_YOUR_CSV_LINK_HERE";
+
+let data = [];
+let grouped = {};
+
+// ----------------------
+// COPY TO CLIPBOARD
+// ----------------------
+function copy(val) {
+  navigator.clipboard.writeText(val || "");
+}
+
+// ----------------------
+// LOAD CSV
+// ----------------------
+async function load() {
+
+  const res = await fetch(SHEET_CSV_URL);
+  const text = await res.text();
+
+  const parsed = Papa.parse(text, {
+    header: true,
+    skipEmptyLines: true
+  });
+
+  data = parsed.data;
+
+  buildReceipts();
+}
+
+load();
+
+// ----------------------
+// GROUP RECEIPTS
+// ----------------------
+function buildReceipts() {
+
+  grouped = {};
+
+  data.forEach(r => {
+
+    const po = (r.PO || "").trim();
+    const session = (r.Session || "").trim();
+    const ts = r.Timestamp;
+
+    if (!po || !session) return;
+
+    const key = po + "|" + session;
+
+    if (!grouped[key]) {
+      grouped[key] = {
+        po,
+        session,
+        timestamp: ts,
+        rows: []
+      };
+    }
+
+    grouped[key].rows.push(r);
+  });
+
+  renderButtons();
+}
+
+// ----------------------
+// LABEL FORMAT
+// ----------------------
+function formatLabel(po, ts) {
+
+  const d = new Date(ts);
+  if (isNaN(d)) return po;
+
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const day = d.getDate();
+  const mon = months[d.getMonth()];
+  const hour = d.getHours();
+  const min = String(d.getMinutes()).padStart(2,"0");
+  const ampm = hour >= 12 ? "pm" : "am";
+  const hr = hour % 12 || 12;
+
+  return `${po} — ${mon} ${day} @ ${hr}:${min}${ampm}`;
+}
+
+// ----------------------
+// RENDER BUTTONS
+// ----------------------
+function renderButtons() {
+
+  const div = document.getElementById("receiptList");
+  div.innerHTML = "";
+
+  Object.values(grouped)
+    .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))
+    .forEach(g => {
+
+      const btn = document.createElement("button");
+      btn.innerText = formatLabel(g.po, g.timestamp);
+      btn.onclick = () => showReceipt(g);
+
+      div.appendChild(btn);
+    });
+}
+
+// ----------------------
+// COPY CELL WRAPPER
+// ----------------------
+function cell(val) {
+  const safe = val ?? "";
+
+  return `
+    <div style="display:flex;justify-content:center;align-items:center;gap:8px;">
+      <span>${safe}</span>
+      <button class="copyBtn" onclick="copy('${String(safe).replace(/'/g,"\\'")}')">Copy</button>
+    </div>
+  `;
+}
+
+// ----------------------
+// SHOW RECEIPT
+// ----------------------
+function showReceipt(group) {
+
+  document.getElementById("tableWrap").classList.remove("hidden");
+
+  document.getElementById("title").innerText =
+    `PO ${group.po} — Session ${group.session}`;
+
+  const body = document.getElementById("body");
+  body.innerHTML = "";
+
+  group.rows.forEach(r => {
+
+    body.innerHTML += `
+      <tr>
+        <td>${cell(r.SKU)}</td>
+        <td>${cell(r.Lot)}</td>
+        <td>${cell(r["Expiration Date"])}</td>
+        <td>${cell(r["Received Qty"])}</td>
+      </tr>
+    `;
+  });
+}
+
+</script>
+
+</body>
+</html>
