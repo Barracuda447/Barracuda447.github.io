@@ -258,10 +258,12 @@ function processScan(raw) {
     let exp = '';
     let lot = '';
 
+    // Remove GS1 prefix (01...)
     if (working.startsWith('01') && working.length >= 16) {
         working = working.substr(16);
     }
 
+    // EXPIRY (17YYMMDD)
     let expIndex = working.indexOf('17');
     if (expIndex !== -1 && working.length >= expIndex + 8) {
         const expRaw = working.substr(expIndex + 2, 6);
@@ -269,6 +271,13 @@ function processScan(raw) {
         working = working.substring(0, expIndex) + working.substring(expIndex + 8);
     }
 
+    // MANUFACTURING DATE (11...) → ignore but strip
+    let mfgIndex = working.indexOf('11');
+    if (mfgIndex !== -1 && working.length >= mfgIndex + 8) {
+        working = working.substring(0, mfgIndex) + working.substring(mfgIndex + 8);
+    }
+
+    // LOT (10...)
     let lotIndex = working.indexOf('10');
     if (lotIndex !== -1) {
         let i = lotIndex + 2;
@@ -283,7 +292,7 @@ function processScan(raw) {
     }
 
     if (!lot) {
-        showError("Invalid scan");
+        showError("Invalid barcode scanned");
         return;
     }
 
