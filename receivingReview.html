@@ -84,6 +84,7 @@ table button {
     <th>Lot</th>
     <th>Expiration Date</th>
     <th>Received Qty</th>
+    <th>Receipt ID</th>
     <th>Actions</th>
 </tr>
 </thead>
@@ -109,12 +110,19 @@ const status = document.getElementById("status");
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbwgXASrYocJT51hLX2YlVlLTpvsRwJwJVtOvd4k1qxaWkA_O1D7kS4x_UQqvpIEVK0/exec";
 
 // =========================
+// CREATE RECEIPT ID (NEW)
+// =========================
+const receiptId = localStorage.getItem("receiptId") || crypto.randomUUID();
+localStorage.setItem("receiptId", receiptId);
+
+// =========================
 // RENDER TABLE
 // =========================
 function render() {
     tbody.innerHTML = '';
 
     data.forEach((row, index) => {
+
         const tr = document.createElement("tr");
 
         tr.innerHTML = `
@@ -125,6 +133,7 @@ function render() {
             <td>${row.lot}</td>
             <td>${row.exp}</td>
             <td>${row.qty}</td>
+            <td>${receiptId}</td>
             <td>
                 <button onclick="deleteRow(${index})">Delete</button>
             </td>
@@ -146,13 +155,9 @@ function deleteRow(i) {
 }
 
 // =========================
-// SEND TO GOOGLE SHEET
+// SEND TO SHEET
 // =========================
 async function sendToSheet() {
-    if (!SHEET_URL) {
-        alert("Paste your Google Script URL first.");
-        return;
-    }
 
     if (!data.length) {
         alert("No data to send.");
@@ -164,9 +169,14 @@ async function sendToSheet() {
     try {
         for (let item of data) {
 
+            const payload = {
+                ...item,
+                receiptId: receiptId   // 👈 NEW FIELD
+            };
+
             await fetch(SHEET_URL, {
                 method: "POST",
-                body: JSON.stringify(item),
+                body: JSON.stringify(payload),
                 mode: "no-cors",
                 headers: {
                     "Content-Type": "text/plain"
@@ -194,6 +204,7 @@ function finish() {
     localStorage.removeItem("receivingReview");
     localStorage.removeItem("poNumber");
     localStorage.removeItem("receivingSession");
+    localStorage.removeItem("receiptId");
 
     window.location.href = "receiving.html";
 }
