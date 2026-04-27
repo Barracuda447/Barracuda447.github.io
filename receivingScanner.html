@@ -100,6 +100,7 @@ th {
     <div class="topButtons">
         <button onclick="nextSKU()">Next SKU</button>
         <button onclick="completeReceiving()">Complete Receiving</button>
+        <button onclick="openManual()">Manual Add LOT</button>
     </div>
 
     <p>Scan items...</p>
@@ -122,7 +123,28 @@ th {
 <br>
 <button onclick="resetAll()">Reset</button>
 
+<!-- =========================
+     MANUAL MODAL
+========================= -->
+<div id="manualModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.95); align-items:center; justify-content:center;">
+    <div style="background:black; padding:20px; width:100%; max-width:420px; border:2px solid rgb(255,224,0); border-radius:10px;">
+        <h3 style="text-align:center;">Manual LOT Entry</h3>
+
+        <input id="mLot" placeholder="LOT">
+
+        <select id="mYear"></select>
+        <select id="mMonth"></select>
+        <select id="mDay"></select>
+
+        <input id="mQty" type="number" placeholder="Quantity">
+
+        <button onclick="addManual()">Add</button>
+        <button onclick="closeManual()">Cancel</button>
+    </div>
+</div>
+
 <script>
+
 const po = localStorage.getItem("poNumber");
 const session = localStorage.getItem("receivingSession");
 
@@ -144,7 +166,9 @@ let buffer = '';
 let timer = null;
 let lastInputTime = Date.now();
 
-/* START */
+/* =========================
+   START SCANNING
+========================= */
 function startScanning() {
     const sku = document.getElementById('sku').value.trim();
     if (!sku) return alert("Enter SKU");
@@ -160,7 +184,9 @@ function startScanning() {
     scanInput.focus();
 }
 
-/* NEXT SKU */
+/* =========================
+   NEXT SKU
+========================= */
 function nextSKU() {
     const newSku = prompt("Enter next SKU:");
     if (!newSku) return;
@@ -171,7 +197,9 @@ function nextSKU() {
     scanInput.focus();
 }
 
-/* COMPLETE RECEIVING */
+/* =========================
+   COMPLETE RECEIVING
+========================= */
 function completeReceiving() {
     if (!confirm("Finish receiving and review?")) return;
 
@@ -190,7 +218,9 @@ function completeReceiving() {
     window.location.href = "receivingReview.html";
 }
 
-/* SCANNER INPUT */
+/* =========================
+   SCANNER INPUT
+========================= */
 scanInput.addEventListener('input', function () {
     const now = Date.now();
     const diff = now - lastInputTime;
@@ -208,13 +238,17 @@ scanInput.addEventListener('input', function () {
     }, 50);
 });
 
-/* ERROR */
+/* =========================
+   ERROR
+========================= */
 function showError(msg) {
     errorMsg.innerText = msg;
     setTimeout(() => errorMsg.innerText = '', 1500);
 }
 
-/* PARSE BARCODE (same logic) */
+/* =========================
+   BARCODE PARSER
+========================= */
 function processScan(raw) {
     if (!raw) return;
 
@@ -269,7 +303,9 @@ function processScan(raw) {
     renderTable();
 }
 
-/* TABLE */
+/* =========================
+   TABLE
+========================= */
 function renderTable() {
     tableBody.innerHTML = '';
 
@@ -285,10 +321,107 @@ function renderTable() {
     });
 }
 
-/* RESET */
+/* =========================
+   RESET
+========================= */
 function resetAll() {
     location.reload();
 }
+
+/* =========================
+   MANUAL ENTRY
+========================= */
+function openManual() {
+    document.getElementById('manualModal').style.display = 'flex';
+}
+
+function closeManual() {
+    document.getElementById('manualModal').style.display = 'none';
+}
+
+function isLeapYear(y) {
+    return (y % 4 === 0 && y % 100 !== 0) || (y % 400 === 0);
+}
+
+function isValidDate(y, m, d) {
+    const days = {
+        1:31,2:isLeapYear(y)?29:28,3:31,4:30,5:31,6:30,
+        7:31,8:31,9:30,10:31,11:30,12:31
+    };
+    return days[m] && d >= 1 && d <= days[m];
+}
+
+(function initDropdowns() {
+    const y = document.getElementById("mYear");
+    const m = document.getElementById("mMonth");
+
+    const now = new Date().getFullYear();
+
+    y.innerHTML = `<option value="">Year</option>`;
+    for (let i = now - 3; i <= now + 10; i++) {
+        y.innerHTML += `<option value="${i}">${i}</option>`;
+    }
+
+    m.innerHTML = `<option value="">Month</option>`;
+    for (let i = 1; i <= 12; i++) {
+        let mm = String(i).padStart(2,'0');
+        m.innerHTML += `<option value="${mm}">${mm}</option>`;
+    }
+})();
+
+function updateDays() {
+    const y = parseInt(document.getElementById("mYear").value);
+    const m = parseInt(document.getElementById("mMonth").value);
+    const d = document.getElementById("mDay");
+
+    d.innerHTML = `<option value="">Day</option>`;
+    if (!y || !m) return;
+
+    const max = {
+        1:31,2:isLeapYear(y)?29:28,3:31,4:30,5:31,6:30,
+        7:31,8:31,9:30,10:31,11:30,12:31
+    }[m];
+
+    for (let i = 1; i <= max; i++) {
+        let dd = String(i).padStart(2,'0');
+        d.innerHTML += `<option value="${dd}">${dd}</option>`;
+    }
+}
+
+document.getElementById("mYear").addEventListener("change", updateDays);
+document.getElementById("mMonth").addEventListener("change", updateDays);
+
+function addManual() {
+    const lot = document.getElementById('mLot').value.trim();
+    const qty = parseInt(document.getElementById('mQty').value);
+
+    const y = document.getElementById('mYear').value;
+    const m = document.getElementById('mMonth').value;
+    const d = document.getElementById('mDay').value;
+
+    if (!currentSKU) return alert("Enter SKU first");
+    if (!lot || !qty || !y || !m || !d) return alert("Fill all fields");
+
+    if (!isValidDate(parseInt(y), parseInt(m), parseInt(d))) {
+        return alert("Invalid date");
+    }
+
+    const exp = `${y}-${m}-${d}`;
+    const key = currentSKU + "|" + lot + "|" + exp;
+
+    if (!dataStore[key]) {
+        dataStore[key] = { sku: currentSKU, lot, exp, qty: 0 };
+    }
+
+    dataStore[key].qty += qty;
+
+    renderTable();
+    closeManual();
+
+    document.getElementById('mLot').value = '';
+    document.getElementById('mQty').value = '';
+}
+
 </script>
 
 </body>
