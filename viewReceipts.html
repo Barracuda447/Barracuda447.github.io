@@ -23,8 +23,8 @@ button {
   background: rgb(255,224,0);
   color: black;
   border: none;
-  padding: 10px 12px;
-  margin: 4px;
+  padding: 12px 14px;
+  margin: 6px;
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
@@ -32,6 +32,13 @@ button {
 
 button:hover {
   filter: brightness(0.9);
+}
+
+#receiptList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
 }
 
 table {
@@ -51,25 +58,15 @@ th {
   color: black;
 }
 
-#pager {
-  text-align: center;
-  margin-top: 10px;
-}
-
-#detail {
-  margin-top: 20px;
-}
-
-.hidden {
-  display: none;
-}
-
 .copyBtn {
   margin-left: 6px;
   padding: 4px 8px;
   font-size: 12px;
   border-radius: 6px;
-  cursor: pointer;
+}
+
+.hidden {
+  display: none;
 }
 </style>
 </head>
@@ -78,13 +75,7 @@ th {
 
 <h2>Receiving History</h2>
 
-<div id="list"></div>
-
-<div id="pager">
-  <button onclick="prevPage()">Prev</button>
-  <span id="pageInfo"></span>
-  <button onclick="nextPage()">Next</button>
-</div>
+<div id="receiptList"></div>
 
 <div id="detail" class="hidden">
   <h3 id="title"></h3>
@@ -104,13 +95,10 @@ th {
 
 <script>
 
-const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8_SEEMLGeKrYaH0kxTaQLNZxhrDVB6tBSWpY4jSrq-mjaLkOFodq_RizYbESt5FOseq_4Y7goMsxz/pub?output=csv";
+const SHEET_CSV_URL = "PASTE_YOUR_CSV_LINK_HERE";
 
 let rawData = [];
 let receipts = [];
-
-let page = 0;
-const pageSize = 100;
 
 // ----------------------
 // COPY
@@ -140,14 +128,18 @@ async function load() {
 load();
 
 // ----------------------
-// SAFE KEY
+// ROUND TO 1 MIN
 // ----------------------
-function receiptKey(r) {
-  return (r.PO || "") + "|" + (r.Session || "") + "|" + (r.Timestamp || "");
+function roundMinute(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+
+  d.setSeconds(0, 0);
+  return d.toISOString();
 }
 
 // ----------------------
-// BUILD RECEIPTS (FIXED GROUPING)
+// GROUP RECEIPTS (PO + 1 MIN WINDOW)
 // ----------------------
 function buildReceipts() {
 
@@ -155,13 +147,17 @@ function buildReceipts() {
 
   rawData.forEach(r => {
 
-    const key = receiptKey(r);
+    const po = (r.PO || "").trim();
+    const ts = roundMinute(r.Timestamp);
+
+    if (!po || !ts) return;
+
+    const key = po + "|" + ts;
 
     if (!map[key]) {
       map[key] = {
-        po: r.PO,
-        session: r.Session,
-        timestamp: r.Timestamp,
+        po,
+        timestamp: ts,
         rows: []
       };
     }
@@ -170,74 +166,34 @@ function buildReceipts() {
   });
 
   receipts = Object.values(map)
-    .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+    .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))
+    .slice(0, 20);
 
-  renderList();
+  renderButtons();
 }
 
 // ----------------------
-// PAGINATION LIST
+// RECEIPT BUTTONS
 // ----------------------
-function renderList() {
+function renderButtons() {
 
-  const start = page * pageSize;
-  const slice = receipts.slice(start, start + pageSize);
-
-  const div = document.getElementById("list");
+  const div = document.getElementById("receiptList");
   div.innerHTML = "";
 
-  const table = document.createElement("table");
-
-  table.innerHTML = `
-    <thead>
-      <tr>
-        <th>PO</th>
-        <th>Timestamp</th>
-        <th>Action</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  `;
-
-  const tbody = table.querySelector("tbody");
-
-  slice.forEach(r => {
+  receipts.forEach((r, i) => {
 
     const d = new Date(r.timestamp);
-    const label = isNaN(d) ? r.timestamp : d.toLocaleString();
 
-    const tr = document.createElement("tr");
+    const label = isNaN(d)
+      ? r.po
+      : `${r.po} — ${d.toLocaleString()}`;
 
-    tr.innerHTML = `
-      <td>${r.po}</td>
-      <td>${label}</td>
-      <td><button onclick='openReceipt(${JSON.stringify(r)})'>View</button></td>
-    `;
+    const btn = document.createElement("button");
+    btn.innerText = label;
+    btn.onclick = () => openReceipt(r);
 
-    tbody.appendChild(tr);
+    div.appendChild(btn);
   });
-
-  div.appendChild(table);
-
-  document.getElementById("pageInfo").innerText =
-    `Page ${page + 1} / ${Math.ceil(receipts.length / pageSize)}`;
-}
-
-// ----------------------
-// PAGERS
-// ----------------------
-function nextPage() {
-  if ((page + 1) * pageSize < receipts.length) {
-    page++;
-    renderList();
-  }
-}
-
-function prevPage() {
-  if (page > 0) {
-    page--;
-    renderList();
-  }
 }
 
 // ----------------------
@@ -255,23 +211,21 @@ function cell(val) {
 }
 
 // ----------------------
-// DETAIL VIEW (FIXED + COPY RESTORED)
+// OPEN RECEIPT
 // ----------------------
 function openReceipt(r) {
 
   document.getElementById("detail").classList.remove("hidden");
 
-  document.getElementById("title").innerText =
-    `PO ${r.po} — ${r.session}`;
+  const d = new Date(r.timestamp);
 
-  const rows = rawData.filter(x =>
-    receiptKey(x) === receiptKey(r)
-  );
+  document.getElementById("title").innerText =
+    `PO ${r.po} — ${d.toLocaleString()}`;
 
   const body = document.getElementById("body");
   body.innerHTML = "";
 
-  rows.forEach(x => {
+  r.rows.forEach(x => {
 
     body.innerHTML += `
       <tr>
