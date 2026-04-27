@@ -109,13 +109,36 @@ function copy(v) {
 }
 
 // ----------------------
-// DATE FORMAT: 01-Jan-27
+// RECEIPT TIME FORMAT
+// Apr 27, 12:16pm
 // ----------------------
-function formatDateShort(dateStr) {
+function formatReceiptTime(dateStr) {
   const d = new Date(dateStr);
   if (isNaN(d)) return dateStr;
 
-  const day = String(d.getDate()).padStart(2, "0");
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  const month = months[d.getMonth()];
+  const day = d.getDate();
+
+  let hour = d.getHours();
+  const min = String(d.getMinutes()).padStart(2,"0");
+
+  const ampm = hour >= 12 ? "pm" : "am";
+  hour = hour % 12 || 12;
+
+  return `${month} ${day}, ${hour}:${min}${ampm}`;
+}
+
+// ----------------------
+// EXPIRATION FORMAT
+// 15-Jan-28
+// ----------------------
+function formatExpiry(dateStr) {
+  const d = new Date(dateStr);
+  if (isNaN(d)) return dateStr;
+
+  const day = String(d.getDate()).padStart(2,"0");
   const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
   const mon = months[d.getMonth()];
   const yr = String(d.getFullYear()).slice(-2);
@@ -183,13 +206,14 @@ function buildReceipts() {
 
   receipts = Object.values(map)
     .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .slice(0, 10); // 🔥 ONLY LAST 10
+    .slice(0, 10);
+    // last 10 receipts
 
   renderButtons();
 }
 
 // ----------------------
-// BUTTONS
+// RECEIPT BUTTONS
 // ----------------------
 function renderButtons() {
 
@@ -198,11 +222,7 @@ function renderButtons() {
 
   receipts.forEach(r => {
 
-    const d = new Date(r.timestamp);
-
-    const label = isNaN(d)
-      ? r.po
-      : `${r.po} — ${formatDateShort(d)}`;
+    const label = formatReceiptTime(r.timestamp);
 
     const btn = document.createElement("button");
     btn.innerText = label;
@@ -233,10 +253,8 @@ function openReceipt(r) {
 
   document.getElementById("detail").classList.remove("hidden");
 
-  const d = new Date(r.timestamp);
-
   document.getElementById("title").innerText =
-    `PO ${r.po} — ${formatDateShort(d)}`;
+    `${r.po} — ${formatReceiptTime(r.timestamp)}`;
 
   const body = document.getElementById("body");
   body.innerHTML = "";
@@ -247,7 +265,7 @@ function openReceipt(r) {
       <tr>
         <td>${cell(x.SKU)}</td>
         <td>${cell(x.Lot)}</td>
-        <td>${cell(x["Expiration Date"])}</td>
+        <td>${cell(formatExpiry(x["Expiration Date"]))}</td>
         <td>${cell(x["Received Qty"])}</td>
       </tr>
     `;
