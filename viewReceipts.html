@@ -136,7 +136,7 @@ function formatExpiry(dateStr){
 }
 
 // ======================
-// LOAD CSV
+// LOAD
 // ======================
 async function load(){
   const res=await fetch(SHEET_CSV_URL);
@@ -153,7 +153,7 @@ async function load(){
 load();
 
 // ======================
-// GROUP RECEIPTS
+// GROUP BY RECEIPT ID
 // ======================
 function buildReceipts(){
 
@@ -184,7 +184,7 @@ function buildReceipts(){
 }
 
 // ======================
-// RENDER BUTTONS
+// BUTTONS
 // ======================
 function renderButtons(){
 
@@ -212,18 +212,21 @@ function renderButtons(){
       if(!confirm("Delete entire receipt?")) return;
 
       try {
+        // ✅ FIXED FOR GITHUB PAGES + APPS SCRIPT
         const res = await fetch(EXEC_URL, {
           method: "POST",
+          headers: {
+            "Content-Type": "text/plain;charset=utf-8"
+          },
           body: JSON.stringify({
             action: "deleteReceipt",
             receiptId: r.receiptId
           })
         });
 
-        const result = await res.text();
-        console.log("Delete response:", result);
+        const text = await res.text();
+        console.log("Delete response:", text);
 
-        // remove locally
         rawData = rawData.filter(x =>
           (x["Receipt ID"] || "") !== r.receiptId
         );
@@ -244,7 +247,7 @@ function renderButtons(){
 }
 
 // ======================
-// CELL RENDER
+// CELL
 // ======================
 function cell(val){
   const safe=val??"";
