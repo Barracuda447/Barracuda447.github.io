@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Receiving Scanner</title>
+
+<style>
+body {
+    font-family: Arial;
+    background: rgb(0,0,0);
+    color: rgb(255,224,0);
+    margin: 0;
+    padding: 12px;
+    font-size: 18px;
+    user-select: none;
+}
+
+h2 {
+    text-align: center;
+    font-size: 26px;
+    margin-bottom: 10px;
+}
+
+.hidden { display: none; }
+
+input, select {
+    width: 100%;
+    font-size: 20px;
+    padding: 14px;
+    margin: 8px 0;
+    background: black;
+    color: rgb(255,224,0);
+    border: 2px solid rgb(255,224,0);
+    border-radius: 6px;
+}
+
+button {
+    padding: 18px;
+    font-size: 20px;
+    cursor: pointer;
+    background: black;
+    color: rgb(255,224,0);
+    border: 2px solid rgb(255,224,0);
+    border-radius: 8px;
+}
+
+button:active,
+button:hover {
+    background: rgb(255,224,0);
+    color: black;
+}
+
+.topButtons {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+table {
+    border-collapse: collapse;
+    margin-top: 20px;
+    width: 100%;
+}
+
+td, th {
+    border: 1px solid rgb(255,224,0);
+    padding: 10px;
+    text-align: center;
+}
+
+th {
+    background: rgb(255,224,0);
+    color: black;
+}
+
+#errorMsg {
+    text-align: center;
+    margin-top: 10px;
+    min-height: 24px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>Receiving Scanner</h2>
+
+<p><strong>PO:</strong> <span id="poDisplay"></span></p>
+
+<div id="skuSection">
+    <input type="text" id="sku" placeholder="Enter SKU">
+    <button onclick="startScanning()">Start Scanning</button>
+</div>
+
+<div id="scanSection" class="hidden">
+    <p><strong>SKU:</strong> <span id="skuDisplay"></span></p>
+
+    <div class="topButtons">
+        <button onclick="nextSKU()">Next SKU</button>
+        <button onclick="completeReceiving()">Complete Receiving</button>
+    </div>
+
+    <p>Scan items...</p>
+    <input type="text" id="scanInput" autofocus>
+    <div id="errorMsg"></div>
+</div>
+
+<table id="resultTable" class="hidden">
+<thead>
+<tr>
+    <th>SKU</th>
+    <th>LOT</th>
+    <th>EXP</th>
+    <th>QTY</th>
+</tr>
+</thead>
+<tbody></tbody>
+</table>
+
+<br>
+<button onclick="resetAll()">Reset</button>
+
+<script>
+const po = localStorage.getItem("poNumber");
+const session = localStorage.getItem("receivingSession");
+
+if (!po) {
+    alert("No PO found");
+    window.location.href = "receiving.html";
+}
+
+document.getElementById("poDisplay").innerText = po;
+
+let currentSKU = "";
+let dataStore = {};
+
+const scanInput = document.getElementById('scanInput');
+const tableBody = document.querySelector('#resultTable tbody');
+const errorMsg = document.getElementById('errorMsg');
+
+let buffer = '';
+let timer = null;
+let lastInputTime = Date.now();
+
+/* START */
+function startScanning() {
+    const sku = document.getElementById('sku').value.trim();
+    if (!sku) return alert("Enter SKU");
+
+    currentSKU = sku.toUpperCase();
+
+    document.getElementById('skuDisplay').innerText = currentSKU;
+
+    document.getElementById('skuSection').classList.add('hidden');
+    document.getElementById('scanSection').classList.remove('hidden');
+    document.getElementById('resultTable').classList.remove('hidden');
+
+    scanInput.focus();
+}
+
+/* NEXT SKU */
+function nextSKU() {
+    const newSku = prompt("Enter next SKU:");
+    if (!newSku) return;
+
+    currentSKU = newSku.toUpperCase();
+    document.getElementById('skuDisplay').innerText = currentSKU;
+
+    scanInput.focus();
+}
+
+/* COMPLETE RECEIVING */
+function completeReceiving() {
+    if (!confirm("Finish receiving and review?")) return;
+
+    const exportData = Object.values(dataStore).map(item => ({
+        timestamp: new Date().toISOString(),
+        po,
+        session,
+        sku: item.sku,
+        lot: item.lot,
+        exp: item.exp,
+        qty: item.qty
+    }));
+
+    localStorage.setItem("receivingReview", JSON.stringify(exportData));
+
+    window.location.href = "receivingReview.html";
+}
+
+/* SCANNER INPUT */
+scanInput.addEventListener('input', function () {
+    const now = Date.now();
+    const diff = now - lastInputTime;
+    lastInputTime = now;
+
+    if (diff > 50) buffer = '';
+
+    buffer += scanInput.value;
+    scanInput.value = '';
+
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+        processScan(buffer);
+        buffer = '';
+    }, 50);
+});
+
+/* ERROR */
+function showError(msg) {
+    errorMsg.innerText = msg;
+    setTimeout(() => errorMsg.innerText = '', 1500);
+}
+
+/* PARSE BARCODE (same logic) */
+function processScan(raw) {
+    if (!raw) return;
+
+    const GS = String.fromCharCode(29);
+    let working = raw;
+
+    let exp = '';
+    let lot = '';
+
+    if (working.startsWith('01') && working.length >= 16) {
+        working = working.substr(16);
+    }
+
+    let expIndex = working.indexOf('17');
+    if (expIndex !== -1 && working.length >= expIndex + 8) {
+        const expRaw = working.substr(expIndex + 2, 6);
+        exp = `20${expRaw.slice(0,2)}-${expRaw.slice(2,4)}-${expRaw.slice(4,6)}`;
+        working = working.substring(0, expIndex) + working.substring(expIndex + 8);
+    }
+
+    let lotIndex = working.indexOf('10');
+    if (lotIndex !== -1) {
+        let i = lotIndex + 2;
+        let value = '';
+
+        while (i < working.length && working[i] !== GS) {
+            value += working[i];
+            i++;
+        }
+
+        lot = value;
+    }
+
+    if (!lot) {
+        showError("Invalid scan");
+        return;
+    }
+
+    const key = currentSKU + "|" + lot + "|" + exp;
+
+    if (!dataStore[key]) {
+        dataStore[key] = {
+            sku: currentSKU,
+            lot,
+            exp,
+            qty: 0
+        };
+    }
+
+    dataStore[key].qty++;
+
+    renderTable();
+}
+
+/* TABLE */
+function renderTable() {
+    tableBody.innerHTML = '';
+
+    Object.values(dataStore).forEach(item => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${item.sku}</td>
+            <td>${item.lot}</td>
+            <td>${item.exp}</td>
+            <td>${item.qty}</td>
+        `;
+        tableBody.appendChild(row);
+    });
+}
+
+/* RESET */
+function resetAll() {
+    location.reload();
+}
+</script>
+
+</body>
+</html>

@@ -58,11 +58,16 @@
 
 <button onclick="selectWarehouse('AB')">AB</button>
 <button onclick="selectWarehouse('ON')">ON</button>
+<button onclick="receiving()">Receiving</button>
 
 <script>
 function selectWarehouse(warehouse) {
     localStorage.setItem("warehouse", warehouse);
     window.location.href = "cycle.html";
+}
+
+function receiving() {
+    window.location.href = "receiving.html";
 }
 </script>
 

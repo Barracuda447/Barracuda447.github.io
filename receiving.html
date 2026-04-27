@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Start Receiving</title>
+
+    <style>
+        body {
+            font-family: Arial;
+            text-align: center;
+            margin: 0;
+            padding: 0;
+            background: rgb(0,0,0);
+            color: rgb(255,224,0);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            user-select: none;
+        }
+
+        h2 {
+            font-size: 32px;
+            margin-bottom: 20px;
+        }
+
+        p {
+            font-size: 20px;
+            margin: 10px 0;
+        }
+
+        input {
+            font-size: 22px;
+            padding: 16px;
+            margin: 14px 0;
+            width: 90%;
+            max-width: 420px;
+            background: black;
+            color: rgb(255,224,0);
+            border: 2px solid rgb(255,224,0);
+            border-radius: 8px;
+        }
+
+        input:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgb(255,224,0);
+        }
+
+        button {
+            font-size: 26px;
+            padding: 20px 40px;
+            margin-top: 20px;
+            cursor: pointer;
+            background: black;
+            color: rgb(255,224,0);
+            border: 3px solid rgb(255,224,0);
+            border-radius: 10px;
+            min-width: 260px;
+        }
+
+        button:active,
+        button:hover {
+            background: rgb(255,224,0);
+            color: black;
+        }
+
+        #warehouseDisplay {
+            font-weight: bold;
+            font-size: 22px;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Start Receiving</h2>
+
+<p><strong>Warehouse:</strong> <span id="warehouseDisplay"></span></p>
+
+<input id="poNumber" placeholder="Enter PO Number" autofocus>
+
+<button onclick="startReceiving()">Start</button>
+
+<script>
+const warehouse = localStorage.getItem("warehouse");
+
+if (!warehouse) {
+    window.location.href = "scannerTest.html";
+}
+
+document.getElementById("warehouseDisplay").innerText = warehouse;
+
+function startReceiving() {
+    const po = document.getElementById("poNumber").value.trim().toUpperCase();
+
+    if (!po) return alert("Enter PO Number");
+
+    // Clear any previous receiving data
+    localStorage.removeItem("currentSKU");
+    localStorage.removeItem("scannedItems");
+
+    // Store PO + session
+    localStorage.setItem("poNumber", po);
+    localStorage.setItem("receivingSession", "RECV-" + Date.now());
+
+    // Go to SKU entry / scanning step
+    window.location.href = "receivingScanner.html";
+}
+
+// Allow Enter key (important for scanners)
+document.getElementById("poNumber").addEventListener("keypress", function(e) {
+    if (e.key === "Enter") {
+        startReceiving();
+    }
+});
+</script>
+
+</body>
+</html>
