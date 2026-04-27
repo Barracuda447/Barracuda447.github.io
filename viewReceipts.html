@@ -222,7 +222,7 @@ function renderButtons() {
 
   receipts.forEach(r => {
 
-    const label = formatReceiptTime(r.timestamp);
+    const label = `${r.po} — ${formatReceiptTime(r.timestamp)}`;
 
     const btn = document.createElement("button");
     btn.innerText = label;
