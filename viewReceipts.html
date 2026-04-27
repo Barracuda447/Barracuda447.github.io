@@ -17,15 +17,14 @@ body {
 
 h2 {
   text-align: center;
-  margin-bottom: 20px;
 }
 
 button {
   background: rgb(255,224,0);
   color: black;
   border: none;
-  padding: 12px 14px;
-  margin: 6px;
+  padding: 10px 12px;
+  margin: 4px;
   border-radius: 8px;
   cursor: pointer;
   font-weight: bold;
@@ -35,21 +34,10 @@ button:hover {
   filter: brightness(0.9);
 }
 
-#receiptList {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 20px;
-  justify-content: center;
-}
-
-#tableWrap {
-  margin-top: 20px;
-}
-
 table {
   width: 100%;
   border-collapse: collapse;
+  margin-top: 10px;
 }
 
 th, td {
@@ -63,16 +51,17 @@ th {
   color: black;
 }
 
-.copyBtn {
-  margin-left: 8px;
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: 6px;
-  cursor: pointer;
+#pager {
+  margin-top: 10px;
+  text-align: center;
 }
 
 .hidden {
   display: none;
+}
+
+#detail {
+  margin-top: 20px;
 }
 </style>
 </head>
@@ -81,11 +70,16 @@ th {
 
 <h2>Receiving History</h2>
 
-<div id="receiptList"></div>
+<div id="list"></div>
 
-<div id="tableWrap" class="hidden">
+<div id="pager">
+  <button onclick="prevPage()">Prev</button>
+  <span id="pageInfo"></span>
+  <button onclick="nextPage()">Next</button>
+</div>
+
+<div id="detail" class="hidden">
   <h3 id="title"></h3>
-
   <table>
     <thead>
       <tr>
@@ -104,13 +98,16 @@ th {
 const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vR8_SEEMLGeKrYaH0kxTaQLNZxhrDVB6tBSWpY4jSrq-mjaLkOFodq_RizYbESt5FOseq_4Y7goMsxz/pub?output=csv";
 
 let data = [];
-let grouped = {};
+let receipts = [];
+
+let page = 0;
+const pageSize = 100;
 
 // ----------------------
-// COPY TO CLIPBOARD
+// COPY
 // ----------------------
-function copy(val) {
-  navigator.clipboard.writeText(val || "");
+function copy(v) {
+  navigator.clipboard.writeText(v || "");
 }
 
 // ----------------------
@@ -134,11 +131,11 @@ async function load() {
 load();
 
 // ----------------------
-// GROUP RECEIPTS
+// BUILD RECEIPTS
 // ----------------------
 function buildReceipts() {
 
-  grouped = {};
+  const map = {};
 
   data.forEach(r => {
 
@@ -146,12 +143,12 @@ function buildReceipts() {
     const session = (r.Session || "").trim();
     const ts = r.Timestamp;
 
-    if (!po || !session) return;
+    if (!po || !ts) return;
 
-    const key = po + "|" + session;
+    const key = po + "|" + session + "|" + ts;
 
-    if (!grouped[key]) {
-      grouped[key] = {
+    if (!map[key]) {
+      map[key] = {
         po,
         session,
         timestamp: ts,
@@ -159,87 +156,112 @@ function buildReceipts() {
       };
     }
 
-    grouped[key].rows.push(r);
+    map[key].rows.push(r);
   });
 
-  renderButtons();
+  receipts = Object.values(map)
+    .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+  renderList();
 }
 
 // ----------------------
-// LABEL FORMAT
+// PAGINATION
 // ----------------------
-function formatLabel(po, ts) {
+function renderList() {
 
-  const d = new Date(ts);
-  if (isNaN(d)) return po;
+  const start = page * pageSize;
+  const end = start + pageSize;
 
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const slice = receipts.slice(start, end);
 
-  const day = d.getDate();
-  const mon = months[d.getMonth()];
-  const hour = d.getHours();
-  const min = String(d.getMinutes()).padStart(2,"0");
-  const ampm = hour >= 12 ? "pm" : "am";
-  const hr = hour % 12 || 12;
-
-  return `${po} — ${mon} ${day} @ ${hr}:${min}${ampm}`;
-}
-
-// ----------------------
-// RENDER BUTTONS
-// ----------------------
-function renderButtons() {
-
-  const div = document.getElementById("receiptList");
+  const div = document.getElementById("list");
   div.innerHTML = "";
 
-  Object.values(grouped)
-    .sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp))
-    .forEach(g => {
+  const table = document.createElement("table");
 
-      const btn = document.createElement("button");
-      btn.innerText = formatLabel(g.po, g.timestamp);
-      btn.onclick = () => showReceipt(g);
-
-      div.appendChild(btn);
-    });
-}
-
-// ----------------------
-// COPY CELL WRAPPER
-// ----------------------
-function cell(val) {
-  const safe = val ?? "";
-
-  return `
-    <div style="display:flex;justify-content:center;align-items:center;gap:8px;">
-      <span>${safe}</span>
-      <button class="copyBtn" onclick="copy('${String(safe).replace(/'/g,"\\'")}')">Copy</button>
-    </div>
+  table.innerHTML = `
+    <thead>
+      <tr>
+        <th>PO</th>
+        <th>Timestamp</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
   `;
+
+  const tbody = table.querySelector("tbody");
+
+  slice.forEach(r => {
+
+    const d = new Date(r.timestamp);
+
+    const label = isNaN(d)
+      ? r.timestamp
+      : d.toLocaleString();
+
+    const tr = document.createElement("tr");
+
+    tr.innerHTML = `
+      <td>${r.po}</td>
+      <td>${label}</td>
+      <td><button onclick='openReceipt(${JSON.stringify(r)})'>View</button></td>
+    `;
+
+    tbody.appendChild(tr);
+  });
+
+  div.appendChild(table);
+
+  document.getElementById("pageInfo").innerText =
+    `Page ${page + 1} / ${Math.ceil(receipts.length / pageSize)}`;
 }
 
 // ----------------------
-// SHOW RECEIPT
+// PAGERS
 // ----------------------
-function showReceipt(group) {
+function nextPage() {
+  if ((page + 1) * pageSize < receipts.length) {
+    page++;
+    renderList();
+  }
+}
 
-  document.getElementById("tableWrap").classList.remove("hidden");
+function prevPage() {
+  if (page > 0) {
+    page--;
+    renderList();
+  }
+}
+
+// ----------------------
+// DETAIL VIEW
+// ----------------------
+function openReceipt(r) {
+
+  document.getElementById("detail").classList.remove("hidden");
 
   document.getElementById("title").innerText =
-    `PO ${group.po} — Session ${group.session}`;
+    `PO ${r.po} — ${r.session}`;
+
+  const rows = data.filter(x =>
+    x.PO === r.po &&
+    x.Session === r.session &&
+    x.Timestamp === r.timestamp
+  );
 
   const body = document.getElementById("body");
   body.innerHTML = "";
 
-  group.rows.forEach(r => {
+  rows.forEach(x => {
 
     body.innerHTML += `
       <tr>
-        <td>${cell(r.SKU)}</td>
-        <td>${cell(r.Lot)}</td>
-        <td>${cell(r["Expiration Date"])}</td>
-        <td>${cell(r["Received Qty"])}</td>
+        <td>${x.SKU}</td>
+        <td>${x.Lot}</td>
+        <td>${x["Expiration Date"]}</td>
+        <td>${x["Received Qty"]}</td>
       </tr>
     `;
   });
